@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>仓库 SKU 扫码计数器 · 摄像头版</title>
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.wrap{max-width:760px;margin:auto;padding:12px 12px 40px}
+.card{background:#111;border-radius:18px;padding:14px;margin-bottom:12px}
+.header{position:relative;padding-right:72px}
+.langbtn{position:absolute;right:12px;top:12px;background:#222;color:#fff;border:1px solid #333;border-radius:10px;padding:7px 9px;font-size:12px;font-weight:700}
+h1{font-size:22px;margin:2px 0 4px}.muted{color:#999;font-size:13px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{display:block;color:#999;font-size:12px;margin:0 0 6px 2px}
+input,textarea,button{font:inherit;border-radius:13px}
+input,textarea{width:100%;background:#1c1c1e;color:#fff;border:1px solid #333;padding:12px;font-size:16px}
+textarea{min-height:75px;resize:vertical}
+button{border:0;padding:13px;font-weight:800;background:#fff;color:#000}
+.dark{background:#282828;color:#fff}.red{background:#4b1515;color:#ffb8b8}
+.camera-card{padding:0;overflow:hidden}
+.camera-wrap{position:relative;background:#050505;min-height:360px}
+#reader{width:100%;min-height:360px}
+#reader video{width:100%!important;height:auto!important;display:block;border-radius:18px}
+.scan-overlay{position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center}
+.scan-box{width:min(72vw,360px);aspect-ratio:1/1;position:relative}
+.corner{position:absolute;width:64px;height:64px;border-color:#fff}
+.c1{left:0;top:0;border-left:5px solid;border-top:5px solid}
+.c2{right:0;top:0;border-right:5px solid;border-top:5px solid}
+.c3{left:0;bottom:0;border-left:5px solid;border-bottom:5px solid}
+.c4{right:0;bottom:0;border-right:5px solid;border-bottom:5px solid}
+.camera-status{padding:10px 12px;text-align:center;background:#0b0b0b}
+.manual{display:grid;grid-template-columns:minmax(0,1fr) 92px auto;gap:8px;margin-top:12px}.manual button{padding:0 18px}.qtyinput{text-align:center;font-weight:800}
+@media(max-width:430px){.manual{grid-template-columns:1fr 82px}.manual button{grid-column:1/-1;min-height:48px}}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{background:#111;border-radius:18px;padding:14px;text-align:center}
+.stat span{font-size:12px;color:#999}.stat b{display:block;font-size:30px;margin-top:4px}
+.last{font-size:22px;font-weight:800;word-break:break-word}.qty{font-size:18px;font-weight:800;margin-top:8px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.full{grid-column:1/-1}
+.syncbar{display:flex;justify-content:space-between;gap:10px;align-items:center;background:#151515;border:1px solid #292929;border-radius:14px;padding:10px 12px;margin-bottom:12px}.syncbar b{font-size:13px}.syncbar span{font-size:12px;color:#aaa}.syncok{color:#7dff9d!important}.syncwarn{color:#ffd27d!important}.syncerr{color:#ff9f9f!important}.busy{opacity:.55;pointer-events:none}
+.row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:11px 0;border-bottom:1px solid #262626}
+.pill{background:#222;border-radius:999px;padding:6px 9px;font-weight:800}.mini{padding:7px 10px;border-radius:9px;background:#222;color:#fff}
+.search{margin-top:10px}
+.flash{position:fixed;inset:0;background:rgba(40,255,110,.28);pointer-events:none;opacity:0;transition:.08s;z-index:999}
+.flash.on{opacity:1}
+#restartBtn{display:none;margin:10px auto 0}
+@media(max-width:540px){.grid{grid-template-columns:1fr}.row{grid-template-columns:1fr auto auto}.camera-wrap,#reader{min-height:330px}}
+
+html{scroll-behavior:smooth}
+button,.card,.stat,input,textarea{
+  -webkit-tap-highlight-color:transparent;
+}
+button{
+  transition:transform .10s ease,opacity .10s ease;
+  will-change:transform;
+}
+button:active{transform:scale(.97)}
+.card,.stat{
+  transform:translateZ(0);
+  backface-visibility:hidden;
+}
+.flash{
+  will-change:opacity;
+  transform:translateZ(0);
+}
+.row{
+  contain:layout paint;
+}
+
+</style>
+</head>
+<body>
+<div class="flash" id="flash"></div>
+<div class="wrap">
+  <div class="card header">
+    <button class="langbtn" id="langBtn" onclick="toggleLang()">EN</button>
+    <h1 data-i18n="title">📦 仓库 SKU 扫码计数器</h1>
+    <div class="muted" data-i18n="subtitle">二维码 + 一维码 + 手动输入 · 自动统计 · 导出 Excel</div>
+  </div>
+
+  <div class="card">
+    <div class="grid">
+      <div><label data-i18n="employee">员工姓名</label><input id="employeeName" data-ph="employeePh" placeholder="例如：Ah Hong"></div>
+      <div><label data-i18n="date">日期</label><input id="taskDate" type="date" disabled></div>
+      <div><label data-i18n="taskName">任务名称</label><input id="taskName" data-ph="taskNamePh" placeholder="例如：退货盘点"></div>
+    </div>
+  </div>
+
+  <div class="syncbar"><div><b id="syncTitle">☁️ 云端同步</b><br><span id="syncStatus">准备中…</span></div><button id="retryBtn" class="dark" style="padding:9px 12px;display:none" onclick="retryPending()">重试</button></div>
+
+  <div class="card camera-card">
+    <div class="camera-wrap">
+      <div id="reader"></div>
+      <div class="scan-overlay">
+        <div class="scan-box">
+          <span class="corner c1"></span><span class="corner c2"></span><span class="corner c3"></span><span class="corner c4"></span>
+        </div>
+      </div>
+    </div>
+    <div class="camera-status">
+      <span id="camStatus">正在启动摄像头…</span>
+      <button id="restartBtn" class="dark" onclick="restartCamera()">重新启动摄像头</button>
+    </div>
+  </div>
+
+  <div class="muted" style="margin:-4px 8px 12px;text-align:center" data-i18n="scanHint">
+    白色正方形只是瞄准参考；实际会识别整张相机画面，远一点也能尝试识别。
+  </div>
+
+  <div class="card">
+    <label data-i18n="manualLabel">手动输入 SKU / 条码内容</label>
+    <div class="manual">
+      <input id="manualInput" data-ph="manualPh" placeholder="输入 SKU / 条码">
+      <input id="manualQty" class="qtyinput" type="number" inputmode="numeric" min="1" step="1" value="1" aria-label="数量">
+      <button id="manualAddBtn" onclick="manualAdd()" data-i18n="manualAddBtn">加入</button>
+    </div>
+    <div class="muted" style="margin-top:8px" data-i18n="manualHint">可直接输入数量，例如输入 24 后一次加入 24 件；扫码仍然每次 +1。</div>
+  </div>
+
+  <div class="card">
+    <div class="muted" data-i18n="lastEntry">刚刚录入</div>
+    <div class="last" id="lastCode">等待扫描或输入…</div>
+    <div class="qty" id="lastQty">当前数量：0</div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><span data-i18n="total">总数量</span><b id="totalCount">0</b></div>
+    <div class="stat"><span data-i18n="unique">SKU 种类</span><b id="uniqueCount">0</b></div>
+  </div>
+
+  <div class="card">
+    <div class="actions">
+      <button onclick="undoLast()" data-i18n="undo">撤销上一次</button>
+      <button class="dark" onclick="exportExcel()" data-i18n="excel">生成 Excel</button>
+      <button id="finishBtn" class="red full" onclick="newTask()" data-i18n="newTask">完成并开始新任务</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <b data-i18n="details">SKU 明细</b>
+    <input id="searchInput" class="search" data-ph="searchPh" placeholder="搜索 SKU" oninput="render()">
+    <div id="skuList" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL="https://brqurxainlsteygsqfcu.supabase.co";
+const SUPABASE_KEY="sb_publishable_WGmlYFeJDFhyCSteTxQGWQ_3aggl9LK";
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
+let counts={}, history=[], lastDecoded="", lastAt=0;
+let audioCtx=null, html5QrCode=null, cameraRunning=false, currentTrack=null;
+let lang=localStorage.getItem("warehouse_lang")||"zh";
+
+const I18N={
+zh:{
+title:"📦 仓库 SKU 扫码计数器",subtitle:"二维码 + 一维码 + 手动数量 · 30FPS扫描 · 云端同步 · 导出 Excel",
+employee:"员工姓名",employeePh:"例如：Ah Hong",date:"日期",taskName:"任务名称",taskNamePh:"例如：退货盘点",
+batch:"批次号",batchPh:"例如：RET-001",content:"任务内容 / 备注",contentPh:"填写本次任务内容",
+scanHint:"白色正方形只是瞄准参考；实际会识别整张相机画面，远一点也能尝试识别。",
+manualLabel:"手动输入 SKU / 条码内容",manualPh:"输入 SKU / 条码",manualAddBtn:"加入",manualHint:"可直接输入数量，例如输入 24 后一次加入 24 件；扫码仍然每次 +1。",
+lastEntry:"刚刚录入",waiting:"等待扫描或输入…",currentQty:"当前数量：",total:"总数量",unique:"SKU 种类",
+undo:"撤销上一次",excel:"生成 Excel",newTask:"完成并开始新任务",details:"SKU 明细",searchPh:"搜索 SKU",
+syncTitle:"☁️ 云端同步",syncReady:"已连接 · 完成任务时自动上传",syncing:"正在同步任务…",syncSuccess:"同步成功，正在开始新任务…",syncFailed:"同步失败，已安全保存在本机，可稍后重试",pendingPrefix:"待同步任务：",retry:"重试",needEmployee:"请先填写员工姓名",needData:"还没有扫描数据",
+noData:"暂无数据",undone:"已撤销：",noScan:"还没有扫描数据",confirmNew:"确定完成当前任务并开始新任务？",
+camStarting:"正在启动摄像头…",camReady:"摄像头已启动 · 30 FPS · 2秒防重复 · 全画面识别",camError:"摄像头启动失败，请点下面重新启动",
+employeeCol:"员工",dateCol:"日期",taskCol:"任务名称",contentCol:"任务内容",batchCol:"批次号",uniqueCol:"SKU种类",totalCol:"总数量",skuCol:"SKU",qtyCol:"数量"
+},
+en:{
+title:"📦 Warehouse SKU Scanner",subtitle:"QR + Barcode + Manual Qty · 30FPS Scan · Cloud Sync · Export Excel",
+employee:"Employee Name",employeePh:"e.g. Ah Hong",date:"Date",taskName:"Task Name",taskNamePh:"e.g. Return Stock Count",
+batch:"Batch No.",batchPh:"e.g. RET-001",content:"Task Details / Notes",contentPh:"Enter task details",
+scanHint:"The white square is only a guide. The entire camera frame is decoded, helping with longer-distance scans.",
+manualLabel:"Manual SKU / Barcode Entry",manualPh:"Enter SKU / barcode",manualAddBtn:"Add",manualHint:"Enter a quantity such as 24 to add 24 units at once. Camera scans still add +1 each time.",
+lastEntry:"Last Entry",waiting:"Waiting for scan or input…",currentQty:"Current Qty: ",total:"Total Qty",unique:"SKU Types",
+undo:"Undo Last",excel:"Generate Excel",newTask:"Finish & Start New Task",details:"SKU Details",searchPh:"Search SKU",
+syncTitle:"☁️ Cloud Sync",syncReady:"Connected · Auto upload when task is finished",syncing:"Syncing task…",syncSuccess:"Synced. Starting a new task…",syncFailed:"Sync failed. Saved safely on this device for retry",pendingPrefix:"Pending tasks: ",retry:"Retry",needEmployee:"Please enter employee name",needData:"No scan data yet",
+noData:"No data yet",undone:"Undone: ",noScan:"No scan data yet",confirmNew:"Finish this task and start a new one?",
+camStarting:"Starting camera…",camReady:"Camera ready · 30 FPS · 2s duplicate protection · Full-frame decoding",camError:"Camera failed. Tap below to restart.",
+employeeCol:"Employee",dateCol:"Date",taskCol:"Task Name",contentCol:"Task Details",batchCol:"Batch No.",uniqueCol:"SKU Types",totalCol:"Total Qty",skuCol:"SKU",qtyCol:"Qty"
+},
+ta:{
+title:"📦 கிடங்கு SKU ஸ்கேனர்",subtitle:"QR + பார்கோடு + கைமுறை உள்ளீடு · தானியங்கி எண்ணிக்கை · Excel ஏற்றுமதி",
+employee:"ஊழியர் பெயர்",employeePh:"உதா: Ah Hong",date:"தேதி",taskName:"பணி பெயர்",taskNamePh:"உதா: திரும்பிய பொருட்கள் கணக்கெடுப்பு",
+batch:"தொகுதி எண்",batchPh:"உதா: RET-001",content:"பணி விவரம் / குறிப்புகள்",contentPh:"இந்த பணியின் விவரங்களை உள்ளிடவும்",
+scanHint:"வெள்ளை சதுரம் வழிகாட்டி மட்டும். முழு கேமரா காட்சியும் ஸ்கேன் செய்யப்படும்; தூர ஸ்கேனுக்கும் உதவும்.",
+manualLabel:"SKU / பார்கோடு கைமுறை உள்ளீடு",manualPh:"SKU / பார்கோடு உள்ளிடவும்",manualAddBtn:"சேர்",manualHint:"24 போன்ற எண்ணிக்கையை உள்ளிட்டு ஒரே முறையில் 24 பொருட்களை சேர்க்கலாம். கேமரா ஸ்கேன் ஒவ்வொன்றும் +1 ஆகும்.",
+lastEntry:"கடைசி பதிவு",waiting:"ஸ்கேன் அல்லது உள்ளீட்டுக்காக காத்திருக்கிறது…",currentQty:"தற்போதைய எண்ணிக்கை: ",total:"மொத்த எண்ணிக்கை",unique:"SKU வகைகள்",
+undo:"கடைசி பதிவை ரத்து செய்",excel:"Excel உருவாக்கு",newTask:"முடித்து புதிய பணியை தொடங்கு",details:"SKU விவரங்கள்",searchPh:"SKU தேடுக",
+syncTitle:"☁️ கிளவுட் ஒத்திசைவு",syncReady:"இணைக்கப்பட்டது · பணி முடிந்ததும் தானாக பதிவேற்றம்",syncing:"பணி ஒத்திசைக்கப்படுகிறது…",syncSuccess:"ஒத்திசைவு வெற்றி. புதிய பணி தொடங்குகிறது…",syncFailed:"ஒத்திசைவு தோல்வி. மீண்டும் முயற்சிக்க சாதனத்தில் பாதுகாப்பாக சேமிக்கப்பட்டது",pendingPrefix:"ஒத்திசைக்காத பணிகள்: ",retry:"மீண்டும் முயற்சி",needEmployee:"ஊழியர் பெயரை உள்ளிடவும்",needData:"இன்னும் ஸ்கேன் தரவு இல்லை",
+noData:"தரவு இல்லை",undone:"ரத்து செய்யப்பட்டது: ",noScan:"இன்னும் ஸ்கேன் தரவு இல்லை",confirmNew:"இந்த பணியை முடித்து புதிய பணியை தொடங்கவா?",
+camStarting:"கேமரா தொடங்குகிறது…",camReady:"கேமரா தயார் · 30 FPS · 2 வினாடி மீள்-ஸ்கேன் தடுப்பு · முழு காட்சி ஸ்கேன்",camError:"கேமரா தொடங்கவில்லை. மீண்டும் தொடங்க கீழே அழுத்தவும்.",
+employeeCol:"ஊழியர்",dateCol:"தேதி",taskCol:"பணி பெயர்",contentCol:"பணி விவரம்",batchCol:"தொகுதி எண்",uniqueCol:"SKU வகைகள்",totalCol:"மொத்த எண்ணிக்கை",skuCol:"SKU",qtyCol:"எண்ணிக்கை"
+}};
+
+const $=id=>document.getElementById(id);
+const employeeName=$("employeeName"),taskDate=$("taskDate"),taskName=$("taskName");
+const manualInput=$("manualInput"),manualQty=$("manualQty"),lastCode=$("lastCode"),lastQty=$("lastQty"),totalCount=$("totalCount"),uniqueCount=$("uniqueCount");
+const skuList=$("skuList"),searchInput=$("searchInput"),flash=$("flash"),langBtn=$("langBtn"),camStatus=$("camStatus"),restartBtn=$("restartBtn");
+const syncTitle=$("syncTitle"),syncStatus=$("syncStatus"),retryBtn=$("retryBtn"),finishBtn=$("finishBtn");
+
+function t(k){return I18N[lang][k]||k}
+function applyLang(){
+ document.documentElement.lang=lang==="zh"?"zh-CN":(lang==="en"?"en":"ta");
+ document.querySelectorAll("[data-i18n]").forEach(el=>el.textContent=t(el.dataset.i18n));
+ document.querySelectorAll("[data-ph]").forEach(el=>el.placeholder=t(el.dataset.ph));
+ langBtn.textContent=lang==="zh"?"EN":(lang==="en"?"தமிழ்":"中");
+ syncTitle.textContent=t("syncTitle");retryBtn.textContent=t("retry");updateSyncStatus();
+ camStatus.textContent=cameraRunning?t("camReady"):t("camStarting");
+ if(!history.length){lastCode.textContent=t("waiting");lastQty.textContent=t("currentQty")+"0"}
+ render();
+}
+function toggleLang(){lang=lang==="zh"?"en":(lang==="en"?"ta":"zh");localStorage.setItem("warehouse_lang",lang);applyLang()}
+
+function todayLocal(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
+taskDate.value=todayLocal();
+const savedName=localStorage.getItem("warehouse_employee_name");if(savedName)employeeName.value=savedName;
+employeeName.addEventListener("change",()=>localStorage.setItem("warehouse_employee_name",employeeName.value.trim()));
+
+function unlockAudio(){
+ try{
+   if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+   if(audioCtx.state==="suspended")audioCtx.resume();
+ }catch(e){}
+}
+["touchstart","pointerdown","click"].forEach(evt=>document.addEventListener(evt,unlockAudio,{passive:true}));
+
+function beep(){
+ try{
+   unlockAudio();
+   if(!audioCtx || audioCtx.state!=="running")return;
+   const now=audioCtx.currentTime;
+   const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+   o.type="square";o.frequency.setValueAtTime(1350,now);
+   g.gain.setValueAtTime(0.0001,now);
+   g.gain.exponentialRampToValueAtTime(0.34,now+0.005);
+   g.gain.exponentialRampToValueAtTime(0.0001,now+0.14);
+   o.connect(g);g.connect(audioCtx.destination);o.start(now);o.stop(now+0.15);
+ }catch(e){}
+}
+function feedback(){
+ beep();
+ // iPhone Safari does not support navigator.vibrate; Android/compatible browsers will vibrate.
+ try{if(navigator.vibrate)navigator.vibrate(80)}catch(e){}
+ requestAnimationFrame(()=>{
+   flash.classList.add("on");
+   setTimeout(()=>requestAnimationFrame(()=>flash.classList.remove("on")),120);
+ });
+}
+
+function add(code,qty=1){
+ code=(code||"").trim();qty=Math.max(1,parseInt(qty,10)||1);if(!code)return;
+ counts[code]=(counts[code]||0)+qty;
+ for(let i=0;i<qty;i++)history.push(code);
+ lastCode.textContent=code;lastQty.textContent=t("currentQty")+counts[code];
+ feedback();scheduleRender();
+}
+function manualAdd(){
+ const v=(manualInput.value||"").trim();if(!v)return;
+ const q=Math.max(1,parseInt(manualQty.value,10)||1);
+ add(v,q);
+ manualInput.value="";manualQty.value="1";manualInput.focus();
+}
+manualInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();manualAdd()}});
+manualQty.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();manualAdd()}});
+
+const formats=[
+ Html5QrcodeSupportedFormats.QR_CODE,Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.CODE_39,
+ Html5QrcodeSupportedFormats.CODE_93,Html5QrcodeSupportedFormats.CODABAR,Html5QrcodeSupportedFormats.EAN_13,
+ Html5QrcodeSupportedFormats.EAN_8,Html5QrcodeSupportedFormats.ITF,Html5QrcodeSupportedFormats.UPC_A,
+ Html5QrcodeSupportedFormats.UPC_E
+];
+
+function onScan(code){
+ const now=Date.now();
+ if(code===lastDecoded && now-lastAt<2000)return;
+ lastDecoded=code;lastAt=now;add(code);
+}
+
+async function enhanceCamera(){
+ try{
+   const video=document.querySelector("#reader video");
+   if(!video || !video.srcObject)return;
+   currentTrack=video.srcObject.getVideoTracks()[0];
+   const caps=currentTrack.getCapabilities?currentTrack.getCapabilities():{};
+   const advanced={};
+   if(caps.focusMode && caps.focusMode.includes("continuous"))advanced.focusMode="continuous";
+   if(caps.zoom && typeof caps.zoom.min==="number" && typeof caps.zoom.max==="number"){
+      const target=Math.min(caps.zoom.max, Math.max(caps.zoom.min, 1.35));
+      if(target>caps.zoom.min)advanced.zoom=target;
+   }
+   if(Object.keys(advanced).length){
+      await currentTrack.applyConstraints({advanced:[advanced]});
+   }
+ }catch(e){}
+}
+
+async function startCamera(){
+ restartBtn.style.display="none";camStatus.textContent=t("camStarting");
+ try{
+   if(!html5QrCode)html5QrCode=new Html5Qrcode("reader",{formatsToSupport:formats,verbose:false});
+   await html5QrCode.start(
+     {facingMode:"environment"},
+     {
+       fps:30,
+       aspectRatio:1.333333,
+       videoConstraints:{
+         facingMode:{ideal:"environment"},
+         width:{ideal:1920},
+         height:{ideal:1080}
+       }
+       // IMPORTANT: no qrbox here. The decoder uses the entire video frame.
+     },
+     onScan,
+     ()=>{}
+   );
+   cameraRunning=true;
+   camStatus.textContent=t("camReady");
+   setTimeout(enhanceCamera,500);
+ }catch(err){
+   cameraRunning=false;camStatus.textContent=t("camError");restartBtn.style.display="inline-block";
+ }
+}
+async function restartCamera(){
+ try{
+   if(html5QrCode && cameraRunning){await html5QrCode.stop()}
+ }catch(e){}
+ cameraRunning=false;
+ try{if(html5QrCode)await html5QrCode.clear()}catch(e){}
+ html5QrCode=null;
+ await new Promise(r=>setTimeout(r,250));
+ startCamera();
+}
+
+function undoLast(){
+ const c=history.pop();if(!c)return;
+ counts[c]--;if(counts[c]<=0)delete counts[c];
+ lastCode.textContent=t("undone")+c;lastQty.textContent=t("currentQty")+(counts[c]||0);scheduleRender();
+}
+function changeQty(sku,delta){
+ if(!counts[sku])return;counts[sku]+=delta;
+ if(counts[sku]<=0)delete counts[sku];
+ if(delta>0)history.push(sku);else{const idx=history.lastIndexOf(sku);if(idx>=0)history.splice(idx,1)}
+ lastCode.textContent=sku;lastQty.textContent=t("currentQty")+(counts[sku]||0);scheduleRender();
+}
+let renderQueued=false;
+function scheduleRender(){
+ if(renderQueued)return;
+ renderQueued=true;
+ requestAnimationFrame(()=>{renderQueued=false;render()});
+}
+function render(){
+ const term=(searchInput.value||"").trim().toLowerCase();
+ let es=Object.entries(counts).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]));
+ totalCount.textContent=es.reduce((s,x)=>s+x[1],0);uniqueCount.textContent=es.length;
+ if(term)es=es.filter(([s])=>s.toLowerCase().includes(term));
+ skuList.innerHTML="";
+ if(!es.length){skuList.innerHTML='<div class="muted">'+t("noData")+'</div>';return}
+ es.forEach(([s,q])=>{
+   const d=document.createElement("div");d.className="row";
+   const a=document.createElement("div");a.textContent=s;
+   const minus=document.createElement("button");minus.className="mini";minus.textContent="-1";minus.onclick=()=>changeQty(s,-1);
+   const b=document.createElement("div");b.className="pill";b.textContent="× "+q;
+   d.append(a,minus,b);skuList.appendChild(d);
+ });
+}
+function safeName(v){return(v||"").trim().replace(/[\\/:*?"<>|]+/g,"_").replace(/\s+/g,"_").slice(0,40)||"NA"}
+function workbook(){
+ const es=Object.entries(counts),total=es.reduce((s,x)=>s+x[1],0),wb=XLSX.utils.book_new();
+ const meta=[[t("employeeCol"),employeeName.value.trim()],[t("dateCol"),taskDate.value],[t("taskCol"),taskName.value.trim()],
+ [t("uniqueCol"),es.length],[t("totalCol"),total]];
+ const ws1=XLSX.utils.aoa_to_sheet(meta);ws1["!cols"]=[{wch:16},{wch:42}];
+ const ws2=XLSX.utils.aoa_to_sheet([[t("skuCol"),t("qtyCol")],...es.sort((a,b)=>a[0].localeCompare(b[0]))]);ws2["!cols"]=[{wch:42},{wch:10}];
+ XLSX.utils.book_append_sheet(wb,ws1,lang==="zh"?"任务资料":(lang==="en"?"Task Info":"பணி தகவல்"));
+ XLSX.utils.book_append_sheet(wb,ws2,lang==="zh"?"SKU明细":(lang==="en"?"SKU Details":"SKU விவரம்"));
+ return wb;
+}
+function exportExcel(){
+ if(!Object.keys(counts).length)return alert(t("noScan"));
+ XLSX.writeFile(workbook(),`${taskDate.value}_${safeName(employeeName.value)}_${safeName(taskName.value)}.xlsx`);
+}
+
+function uuid(){
+ if(crypto.randomUUID)return crypto.randomUUID();
+ return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{const r=Math.random()*16|0,v=c==="x"?r:(r&3|8);return v.toString(16)});
+}
+function deviceId(){
+ let id=localStorage.getItem("warehouse_device_id");
+ if(!id){id=uuid();localStorage.setItem("warehouse_device_id",id)}
+ return id;
+}
+function pendingTasks(){
+ try{return JSON.parse(localStorage.getItem("warehouse_pending_tasks")||"[]")}catch(e){return []}
+}
+function savePending(arr){localStorage.setItem("warehouse_pending_tasks",JSON.stringify(arr));updateSyncStatus()}
+function makeTaskPayload(){
+ const entries=Object.entries(counts);
+ return {
+   id:uuid(),
+   task_date:taskDate.value,employee_name:employeeName.value.trim(),task_name:taskName.value.trim(),task_content:null,batch_no:null,
+   total_qty:entries.reduce((s,x)=>s+x[1],0),sku_types:entries.length,device_id:deviceId(),
+   items:entries.map(([sku,qty])=>({sku,qty}))
+ };
+}
+function setSync(text,cls){syncStatus.textContent=text;syncStatus.className=cls||""}
+function updateSyncStatus(){
+ if(!syncStatus)return;
+ const n=pendingTasks().length;
+ if(n){setSync(t("pendingPrefix")+n,"syncwarn");retryBtn.style.display="inline-block"}
+ else{setSync(t("syncReady"),"syncok");retryBtn.style.display="none"}
+}
+async function uploadTask(task){
+ const taskRow={id:task.id,task_date:task.task_date,employee_name:task.employee_name,task_name:task.task_name,task_content:null,batch_no:null,total_qty:task.total_qty,sku_types:task.sku_types,device_id:task.device_id};
+ let r=await sb.from("tasks").insert(taskRow);
+ if(r.error && r.error.code!=="23505")throw r.error;
+ const chunks=[];for(let i=0;i<task.items.length;i+=100)chunks.push(task.items.slice(i,i+100));
+ for(const chunk of chunks){
+   const rows=chunk.map(x=>({task_id:task.id,sku:x.sku,qty:x.qty}));
+   let x=await sb.from("task_items").insert(rows);
+   if(x.error){
+     for(const row of rows){
+       const one=await sb.from("task_items").insert(row);
+       if(one.error && one.error.code!=="23505")throw one.error;
+     }
+   }
+ }
+}
+async function retryPending(){
+ const arr=pendingTasks();if(!arr.length){updateSyncStatus();return}
+ retryBtn.disabled=true;setSync(t("syncing"),"syncwarn");
+ const remain=[];
+ for(const task of arr){try{await uploadTask(task)}catch(e){remain.push(task)}}
+ savePending(remain);retryBtn.disabled=false;
+ if(remain.length)setSync(t("syncFailed")+" · "+t("pendingPrefix")+remain.length,"syncerr");else setSync(t("syncReady"),"syncok");
+}
+async function newTask(){
+ if(!Object.keys(counts).length)return alert(t("needData"));
+ if(!employeeName.value.trim())return alert(t("needEmployee"));
+ if(!confirm(t("confirmNew")))return;
+ localStorage.setItem("warehouse_employee_name",employeeName.value.trim());
+ const task=makeTaskPayload();
+ const arr=pendingTasks();arr.push(task);savePending(arr);
+ finishBtn.classList.add("busy");retryBtn.style.display="none";setSync(t("syncing"),"syncwarn");
+ try{
+   await uploadTask(task);
+   const left=pendingTasks().filter(x=>x.id!==task.id);savePending(left);
+   setSync(t("syncSuccess"),"syncok");
+   sessionStorage.setItem("warehouse_new_task","1");
+   setTimeout(()=>location.reload(),350);
+ }catch(e){
+   console.error(e);finishBtn.classList.remove("busy");retryBtn.style.display="inline-block";setSync(t("syncFailed"),"syncerr");
+ }
+}
+
+applyLang();
+startCamera();
+setTimeout(retryPending,800);
+</script>
+</body>
+</html>
