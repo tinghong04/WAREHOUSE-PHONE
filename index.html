@@ -27,7 +27,7 @@ button{border:1px solid rgba(255,255,255,.15);padding:13px;font-weight:800;backg
 #reader{width:100%;min-height:360px}
 #reader video{width:100%!important;height:auto!important;display:block;border-radius:18px}
 .scan-overlay{position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center}
-.scan-box{width:min(44vw,210px);aspect-ratio:1/1;position:relative;filter:drop-shadow(0 0 12px rgba(255,255,255,.2))}
+.scan-box{width:min(38vw,180px);aspect-ratio:1/1;position:relative;filter:drop-shadow(0 0 12px rgba(255,255,255,.2))}
 .corner{position:absolute;width:48px;height:48px;border-color:#fff}
 .c1{left:0;top:0;border-left:5px solid;border-top:5px solid}
 .c2{right:0;top:0;border-right:5px solid;border-top:5px solid}
@@ -47,7 +47,7 @@ button{border:1px solid rgba(255,255,255,.15);padding:13px;font-weight:800;backg
 .flash{position:fixed;inset:0;background:rgba(40,255,110,.28);pointer-events:none;opacity:0;transition:.08s;z-index:999}
 .flash.on{opacity:1}
 #restartBtn{display:none;margin:10px auto 0}
-@media(max-width:540px){.grid,.actions{grid-template-columns:1fr}.row{grid-template-columns:minmax(0,1fr) auto 78px}.camera-wrap,#reader{min-height:330px}.scan-box{width:min(46vw,190px)}.corner{width:42px;height:42px}}
+@media(max-width:540px){.grid,.actions{grid-template-columns:1fr}.row{grid-template-columns:minmax(0,1fr) auto 78px}.camera-wrap,#reader{min-height:330px}.scan-box{width:min(42vw,170px)}.corner{width:38px;height:38px}}
 
 html{scroll-behavior:smooth}
 button,.card,.stat,input,textarea{
@@ -168,7 +168,7 @@ const SUPABASE_URL="https://brqurxainlsteygsqfcu.supabase.co";
 const SUPABASE_KEY="sb_publishable_WGmlYFeJDFhyCSteTxQGWQ_3aggl9LK";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
 const photoSb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
-let counts={}, history=[], lastDecoded="", lastAt=0, scanLockedUntil=0, pendingScanTimer=null;
+let counts={}, history=[], lastDecoded="", lastAt=0, scanProcessing=false;
 let orderPhotos=[], photoUploadCount=0, photoUserId=null;
 let currentTaskId=localStorage.getItem("warehouse_current_task_id")||uuid();
 localStorage.setItem("warehouse_current_task_id",currentTaskId);
@@ -303,20 +303,24 @@ const formats=[
  Html5QrcodeSupportedFormats.UPC_E
 ];
 
-function onScan(code){
+async function onScan(code){
  const now=Date.now();
- if(now<scanLockedUntil)return;
+ if(scanProcessing)return;
  if(code===lastDecoded && now-lastAt<2000)return;
- lastDecoded=code;lastAt=now;
+ scanProcessing=true;lastDecoded=code;
  const withPhoto=photoMode.checked;
- scanLockedUntil=now+(withPhoto?1600:500);
- if(pendingScanTimer)clearTimeout(pendingScanTimer);
- if(withPhoto)updatePhotoStatus("hold");
- pendingScanTimer=setTimeout(()=>{
+ try{
+   try{if(html5QrCode&&cameraRunning)html5QrCode.pause(false)}catch(e){}
+   if(withPhoto){updatePhotoStatus("hold");await new Promise(r=>setTimeout(r,900))}
+   else await new Promise(r=>setTimeout(r,220));
    add(code);
-   if(withPhoto)captureOrderPhoto(code);
-   pendingScanTimer=null;
- },withPhoto?850:280);
+   if(withPhoto)await captureOrderPhoto(code);
+ }finally{
+   lastAt=Date.now();
+   await new Promise(r=>setTimeout(r,withPhoto?700:450));
+   try{if(html5QrCode&&cameraRunning)html5QrCode.resume()}catch(e){}
+   scanProcessing=false;
+ }
 }
 
 async function enhanceCamera(){
@@ -344,14 +348,15 @@ async function startCamera(){
    await html5QrCode.start(
      {facingMode:"environment"},
      {
-       fps:30,
+       fps:8,
+       qrbox:(viewfinderWidth,viewfinderHeight)=>{const size=Math.floor(Math.min(viewfinderWidth,viewfinderHeight)*.46);return {width:size,height:size}},
        aspectRatio:1.333333,
        videoConstraints:{
          facingMode:{ideal:"environment"},
          width:{ideal:1920},
          height:{ideal:1080}
        }
-       // IMPORTANT: no qrbox here. The decoder uses the entire video frame.
+       // Scan only within the centered square region.
      },
      onScan,
      ()=>{}
@@ -384,25 +389,28 @@ async function ensurePhotoUser(){
 }
 function captureOrderPhoto(orderNo){
  photoUploadCount++;updatePhotoStatus("taking");
- const video=document.querySelector("#reader video");
- if(!video||!video.videoWidth){photoUploadCount--;updatePhotoStatus("error");return}
- const max=1080,scale=Math.min(1,max/Math.max(video.videoWidth,video.videoHeight));
- const canvas=document.createElement("canvas");canvas.width=Math.round(video.videoWidth*scale);canvas.height=Math.round(video.videoHeight*scale);
- canvas.getContext("2d").drawImage(video,0,0,canvas.width,canvas.height);
- canvas.toBlob(async blob=>{
-   try{
-     if(!blob)throw new Error("No photo data");
-     const userId=await ensurePhotoUser();
-     const fileName=`${Date.now()}_${safeName(orderNo)}.jpg`;
-     const path=`${userId}/${currentTaskId}/${fileName}`;
-     const uploaded=await photoSb.storage.from("task-order-photos").upload(path,blob,{contentType:"image/jpeg",cacheControl:"31536000",upsert:false});
-     if(uploaded.error)throw uploaded.error;
-     orderPhotos.push({order_no:orderNo,storage_path:path,captured_at:new Date().toISOString()});
-     localStorage.setItem("warehouse_current_task_photos",JSON.stringify(orderPhotos));
-     updatePhotoStatus();
-   }catch(e){console.error(e);updatePhotoStatus("error")}
-   finally{photoUploadCount--}
- }, "image/jpeg", .86);
+ return new Promise(resolve=>{
+   const video=document.querySelector("#reader video");
+   if(!video||!video.videoWidth){photoUploadCount--;updatePhotoStatus("error");resolve(false);return}
+   const max=1080,scale=Math.min(1,max/Math.max(video.videoWidth,video.videoHeight));
+   const canvas=document.createElement("canvas");canvas.width=Math.round(video.videoWidth*scale);canvas.height=Math.round(video.videoHeight*scale);
+   canvas.getContext("2d").drawImage(video,0,0,canvas.width,canvas.height);
+   canvas.toBlob(async blob=>{
+     let saved=false;
+     try{
+       if(!blob)throw new Error("No photo data");
+       const userId=await ensurePhotoUser();
+       const fileName=`${Date.now()}_${safeName(orderNo)}.jpg`;
+       const path=`${userId}/${currentTaskId}/${fileName}`;
+       const uploaded=await photoSb.storage.from("task-order-photos").upload(path,blob,{contentType:"image/jpeg",cacheControl:"31536000",upsert:false});
+       if(uploaded.error)throw uploaded.error;
+       orderPhotos.push({order_no:orderNo,storage_path:path,captured_at:new Date().toISOString()});
+       localStorage.setItem("warehouse_current_task_photos",JSON.stringify(orderPhotos));
+       updatePhotoStatus();saved=true;
+     }catch(e){console.error(e);updatePhotoStatus("error")}
+     finally{photoUploadCount--;resolve(saved)}
+   }, "image/jpeg", .86);
+ });
 }
 
 function undoLast(){
