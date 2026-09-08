@@ -23,12 +23,12 @@ textarea{min-height:75px;resize:vertical}
 button{border:1px solid rgba(255,255,255,.15);padding:13px;font-weight:800;background:linear-gradient(145deg,#fff,#d9d9dc);color:#111;box-shadow:0 5px 14px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.8);letter-spacing:.1px}
 .dark{background:linear-gradient(145deg,#3b3b3f,#1b1b1e);color:#fff;border-color:#4a4a50;box-shadow:0 5px 14px rgba(0,0,0,.3),inset 0 1px rgba(255,255,255,.08)}.red{background:linear-gradient(145deg,#7e2727,#3d1114);color:#fff0f0;border-color:#a34343;box-shadow:0 5px 14px rgba(67,0,0,.28),inset 0 1px rgba(255,255,255,.12)}
 .camera-card{padding:0;overflow:hidden}
-.camera-wrap{position:relative;background:#050505;aspect-ratio:1/1;min-height:0;overflow:hidden}
-#reader{width:100%;height:100%;min-height:0}
-#reader video{width:100%!important;height:100%!important;object-fit:cover;display:block;border-radius:18px}
+.camera-wrap{position:relative;background:#050505;min-height:360px}
+#reader{width:100%;min-height:360px}
+#reader video{width:100%!important;height:auto!important;display:block;border-radius:18px}
 .scan-overlay{position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center}
-.scan-box{width:min(38vw,180px);aspect-ratio:1/1;position:relative;filter:drop-shadow(0 0 12px rgba(255,255,255,.2))}
-.corner{position:absolute;width:48px;height:48px;border-color:#fff}
+.scan-box{width:min(72vw,360px);aspect-ratio:1/1;position:relative;filter:drop-shadow(0 0 12px rgba(255,255,255,.2))}
+.corner{position:absolute;width:64px;height:64px;border-color:#fff}
 .c1{left:0;top:0;border-left:5px solid;border-top:5px solid}
 .c2{right:0;top:0;border-right:5px solid;border-top:5px solid}
 .c3{left:0;bottom:0;border-left:5px solid;border-bottom:5px solid}
@@ -47,7 +47,7 @@ button{border:1px solid rgba(255,255,255,.15);padding:13px;font-weight:800;backg
 .flash{position:fixed;inset:0;background:rgba(40,255,110,.28);pointer-events:none;opacity:0;transition:.08s;z-index:999}
 .flash.on{opacity:1}
 #restartBtn{display:none;margin:10px auto 0}
-@media(max-width:540px){.grid,.actions{grid-template-columns:1fr}.row{grid-template-columns:minmax(0,1fr) auto 78px}.camera-wrap,#reader{min-height:0}.scan-box{width:min(42vw,170px)}.corner{width:38px;height:38px}}
+@media(max-width:540px){.grid,.actions{grid-template-columns:1fr}.row{grid-template-columns:minmax(0,1fr) auto 78px}.camera-wrap,#reader{min-height:330px}.scan-box{width:min(72vw,360px)}.corner{width:64px;height:64px}}
 
 html{scroll-behavior:smooth}
 button,.card,.stat,input,textarea{
@@ -168,7 +168,7 @@ const SUPABASE_URL="https://brqurxainlsteygsqfcu.supabase.co";
 const SUPABASE_KEY="sb_publishable_WGmlYFeJDFhyCSteTxQGWQ_3aggl9LK";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
 const photoSb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
-let counts={}, history=[], lastDecoded="", lastAt=0, scanLockedUntil=0;
+let counts={}, history=[], lastDecoded="", lastAt=0;
 let orderPhotos=[], photoUploadCount=0, photoUserId=null;
 let currentTaskId=localStorage.getItem("warehouse_current_task_id")||uuid();
 localStorage.setItem("warehouse_current_task_id",currentTaskId);
@@ -305,16 +305,8 @@ const formats=[
 
 function onScan(code){
  const now=Date.now();
- if(now<scanLockedUntil)return;
- if(code===lastDecoded&&now-lastAt<2000)return;
- lastDecoded=code;lastAt=now;
- const withPhoto=photoMode.checked;
- scanLockedUntil=now+(withPhoto?1800:650);
- add(code);
- if(withPhoto){
-   updatePhotoStatus("hold");
-   setTimeout(()=>captureOrderPhoto(code),1000);
- }
+ if(code===lastDecoded && now-lastAt<2000)return;
+ lastDecoded=code;lastAt=now;add(code);
 }
 
 async function enhanceCamera(){
@@ -342,7 +334,7 @@ async function startCamera(){
    await html5QrCode.start(
      {facingMode:"environment"},
      {
-       fps:12,
+       fps:30,
        aspectRatio:1.333333,
 
        videoConstraints:{
@@ -350,7 +342,7 @@ async function startCamera(){
          width:{ideal:1920},
          height:{ideal:1080}
        }
-       // No qrbox: decoding still uses the full square camera frame.
+       // IMPORTANT: no qrbox here. The decoder uses the entire video frame.
      },
      onScan,
      ()=>{}
