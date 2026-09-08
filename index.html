@@ -249,9 +249,23 @@ function applyLang(){
  render();
 }
 function toggleLang(){lang=lang==="zh"?"en":(lang==="en"?"ta":"zh");localStorage.setItem("warehouse_lang",lang);applyLang();applyMode()}
+function discardDraftForModeChange(){
+ counts={};history=[];orderPhotos=[];photoPendingCode="";
+ localStorage.removeItem("warehouse_current_task_photos");
+ currentTaskId=uuid();localStorage.setItem("warehouse_current_task_id",currentTaskId);
+ lastCode.textContent=t("waiting");lastQty.textContent=t("currentQty")+"0";
+ updatePhotoStatus();scheduleRender();
+}
 function setMode(mode){
  if(mode===currentMode)return;
- if(Object.keys(counts).length||orderPhotos.length)return alert("请先完成当前任务，再切换模式。");
+ const hasDraft=Object.keys(counts).length||orderPhotos.length;
+ if(hasDraft){
+   const message=scanPage.classList.contains("hidden")
+     ?"检测到上一次未提交的临时记录。切换模式会清空这些临时记录，是否继续？"
+     :"当前任务已有扫码或照片。请先完成任务，或返回后重新进入并确认清空。";
+   if(!confirm(message))return;
+   discardDraftForModeChange();
+ }
  currentMode=mode;localStorage.setItem("warehouse_task_mode",mode);applyMode();
 }
 function applyMode(){
