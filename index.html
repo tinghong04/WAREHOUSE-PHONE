@@ -40,7 +40,7 @@ button{border:1px solid rgba(255,255,255,.15);padding:13px;font-weight:800;backg
 .last{font-size:22px;font-weight:800;word-break:break-word}.qty{font-size:18px;font-weight:800;margin-top:8px}
 .actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.full{grid-column:1/-1}
 .syncbar{display:flex;justify-content:space-between;gap:10px;align-items:center;background:#151515;border:1px solid #292929;border-radius:14px;padding:10px 12px;margin-bottom:12px}
-.photo-option{display:flex;align-items:center;justify-content:space-between;gap:12px}.photo-option b{display:block;font-size:15px}.photo-option .muted{margin-top:3px}.switch{position:relative;width:52px;height:30px;flex:none}.switch input{opacity:0;width:0;height:0}.slider{position:absolute;inset:0;background:#343438;border:1px solid #505055;border-radius:999px;transition:.2s}.slider:before{content:"";position:absolute;width:22px;height:22px;left:3px;top:3px;background:#fff;border-radius:50%;box-shadow:0 2px 5px rgba(0,0,0,.35);transition:.2s}.switch input:checked + .slider{background:#1d8d58;border-color:#42b97e}.switch input:checked + .slider:before{transform:translateX(22px)}.photo-status{margin-top:9px;font-size:12px;color:#aaa}.photo-status.ok{color:#83f6b0}.photo-status.err{color:#ffadad}.syncbar b{font-size:13px}.syncbar span{font-size:12px;color:#aaa}.syncok{color:#7dff9d!important}.syncwarn{color:#ffd27d!important}.syncerr{color:#ff9f9f!important}.busy{opacity:.55;pointer-events:none}
+.photo-option{display:flex;align-items:center;justify-content:space-between;gap:12px}.photo-option b{display:block;font-size:15px}.photo-option .muted{margin-top:3px}.switch{position:relative;width:52px;height:30px;flex:none}.switch input{opacity:0;width:0;height:0}.slider{position:absolute;inset:0;background:#343438;border:1px solid #505055;border-radius:999px;transition:.2s}.slider:before{content:"";position:absolute;width:22px;height:22px;left:3px;top:3px;background:#fff;border-radius:50%;box-shadow:0 2px 5px rgba(0,0,0,.35);transition:.2s}.switch input:checked + .slider{background:#1d8d58;border-color:#42b97e}.switch input:checked + .slider:before{transform:translateX(22px)}.photo-status{margin-top:9px;font-size:12px;color:#aaa}.photo-status.ok{color:#83f6b0}.photo-status.err{color:#ffadad}.photo-action{width:100%;margin-top:9px;background:linear-gradient(145deg,#2f9b65,#17633e);color:#fff;border-color:#52bb82}.syncbar b{font-size:13px}.syncbar span{font-size:12px;color:#aaa}.syncok{color:#7dff9d!important}.syncwarn{color:#ffd27d!important}.syncerr{color:#ff9f9f!important}.busy{opacity:.55;pointer-events:none}
 .row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;padding:11px 0;border-bottom:1px solid #262626}
 .pill{background:#222;border-radius:999px;padding:6px 9px;font-weight:800}.mini{padding:7px 10px;border-radius:9px;background:#222;color:#fff}.qtyedit{width:84px!important;text-align:center;font-weight:900;padding:8px 7px!important;border-radius:11px!important;background:#1c1c1e!important}
 .search{margin-top:10px}
@@ -107,6 +107,7 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
     <label class="switch" aria-label="每单拍照"><input id="photoMode" type="checkbox"><span class="slider"></span></label>
   </div>
   <div id="photoStatus" class="photo-status"></div>
+  <button id="capturePhotoBtn" class="photo-action" style="display:none" onclick="capturePendingOrderPhoto()" data-i18n="photoAction">📷 拍照并继续扫码</button>
 
   <div class="card camera-card">
     <div class="camera-wrap">
@@ -169,7 +170,7 @@ const SUPABASE_KEY="sb_publishable_WGmlYFeJDFhyCSteTxQGWQ_3aggl9LK";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
 const photoSb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
 let counts={}, history=[], lastDecoded="", lastAt=0;
-let orderPhotos=[], photoUploadCount=0, photoUserId=null;
+let orderPhotos=[], photoUploadCount=0, photoUserId=null, photoPendingCode="";
 let currentTaskId=localStorage.getItem("warehouse_current_task_id")||uuid();
 localStorage.setItem("warehouse_current_task_id",currentTaskId);
 try{orderPhotos=JSON.parse(localStorage.getItem("warehouse_current_task_photos")||"[]")}catch(e){orderPhotos=[]}
@@ -184,7 +185,7 @@ batch:"批次号",batchPh:"例如：RET-001",content:"任务内容 / 备注",con
 scanHint:"白色正方形只是瞄准参考；实际会识别整张相机画面，远一点也能尝试识别。",
 manualLabel:"手动输入 SKU / 条码内容",manualPh:"输入 SKU / 条码",manualAddBtn:"加入",manualHint:"手动输入和摄像头扫码都每次 +1；数量可在下方 SKU 明细直接修改。",
 lastEntry:"刚刚录入",waiting:"等待扫描或输入…",currentQty:"当前数量：",total:"总数量",unique:"SKU 种类",
-photoMode:"每单拍照",photoModeHint:"开启后，扫码即以条码为单号拍一张照片",photoHold:"扫码成功，请保持货物不动，1 秒后拍照…",photoOff:"每单拍照已关闭",photoReady:"已关联照片：",photoTaking:"正在保存照片…",photoError:"拍照或上传失败，请重新扫描该单号",photoWaiting:"照片仍在上传，请稍后再完成任务",undo:"撤销上一次",excel:"生成 Excel",copy:"复制明细",copySuccess:"已复制当前任务明细",copyFailed:"复制失败，请手动选择并复制",newTask:"完成并开始新任务",details:"SKU 明细",searchPh:"搜索 SKU",
+photoMode:"每单拍照",photoModeHint:"开启后，扫码后手动拍照才可扫下一单",photoAction:"📷 拍照并继续扫码",photoReadyToTake:"已扫单号：",photoCaptureFailed:"照片上传失败，请重新拍照后再继续",photoHold:"扫码成功，请保持货物不动，1 秒后拍照…",photoOff:"每单拍照已关闭",photoReady:"已关联照片：",photoTaking:"正在保存照片…",photoError:"拍照或上传失败，请重新扫描该单号",photoWaiting:"照片仍在上传，请稍后再完成任务",undo:"撤销上一次",excel:"生成 Excel",copy:"复制明细",copySuccess:"已复制当前任务明细",copyFailed:"复制失败，请手动选择并复制",newTask:"完成并开始新任务",details:"SKU 明细",searchPh:"搜索 SKU",
 syncTitle:"☁️ 云端同步",syncReady:"已连接 · 完成任务时自动上传",syncing:"正在同步任务…",syncSuccess:"同步成功，正在开始新任务…",syncFailed:"同步失败，已安全保存在本机，可稍后重试",pendingPrefix:"待同步任务：",retry:"重试",needEmployee:"请先填写员工姓名",needData:"还没有扫描数据",
 noData:"暂无数据",undone:"已撤销：",noScan:"还没有扫描数据",confirmNew:"确定完成当前任务并开始新任务？",
 camStarting:"正在启动摄像头…",camReady:"摄像头已启动 · 30 FPS · 2秒防重复 · 全画面识别",camError:"摄像头启动失败，请点下面重新启动",
@@ -197,7 +198,7 @@ batch:"Batch No.",batchPh:"e.g. RET-001",content:"Task Details / Notes",contentP
 scanHint:"The white square is only a guide. The entire camera frame is decoded, helping with longer-distance scans.",
 manualLabel:"Manual SKU / Barcode Entry",manualPh:"Enter SKU / barcode",manualAddBtn:"Add",manualHint:"Enter a quantity such as 24 to add 24 units at once. Camera scans still add +1 each time.",
 lastEntry:"Last Entry",waiting:"Waiting for scan or input…",currentQty:"Current Qty: ",total:"Total Qty",unique:"SKU Types",
-photoMode:"Photo for each order",photoModeHint:"When enabled, each scan uses the code as the order number and takes a photo",photoHold:"Scan complete. Hold still; photo in 1 second…",photoOff:"Order photos are off",photoReady:"Photos linked: ",photoTaking:"Saving photo…",photoError:"Photo upload failed. Please scan this order again.",photoWaiting:"Photos are still uploading. Please wait before finishing.",undo:"Undo Last",excel:"Generate Excel",copy:"Copy details",copySuccess:"Current task details copied",copyFailed:"Copy failed. Please select and copy manually.",newTask:"Finish & Start New Task",details:"SKU Details",searchPh:"Search SKU",
+photoMode:"Photo for each order",photoModeHint:"When enabled, take a photo manually before scanning the next order",photoAction:"📷 Take photo & continue",photoReadyToTake:"Order scanned: ",photoCaptureFailed:"Photo upload failed. Retake before continuing.",photoHold:"Scan complete. Hold still; photo in 1 second…",photoOff:"Order photos are off",photoReady:"Photos linked: ",photoTaking:"Saving photo…",photoError:"Photo upload failed. Please scan this order again.",photoWaiting:"Photos are still uploading. Please wait before finishing.",undo:"Undo Last",excel:"Generate Excel",copy:"Copy details",copySuccess:"Current task details copied",copyFailed:"Copy failed. Please select and copy manually.",newTask:"Finish & Start New Task",details:"SKU Details",searchPh:"Search SKU",
 syncTitle:"☁️ Cloud Sync",syncReady:"Connected · Auto upload when task is finished",syncing:"Syncing task…",syncSuccess:"Synced. Starting a new task…",syncFailed:"Sync failed. Saved safely on this device for retry",pendingPrefix:"Pending tasks: ",retry:"Retry",needEmployee:"Please enter employee name",needData:"No scan data yet",
 noData:"No data yet",undone:"Undone: ",noScan:"No scan data yet",confirmNew:"Finish this task and start a new one?",
 camStarting:"Starting camera…",camReady:"Camera ready · 30 FPS · 2s duplicate protection · Full-frame decoding",camError:"Camera failed. Tap below to restart.",
@@ -210,7 +211,7 @@ batch:"தொகுதி எண்",batchPh:"உதா: RET-001",content:"ப�
 scanHint:"வெள்ளை சதுரம் வழிகாட்டி மட்டும். முழு கேமரா காட்சியும் ஸ்கேன் செய்யப்படும்; தூர ஸ்கேனுக்கும் உதவும்.",
 manualLabel:"SKU / பார்கோடு கைமுறை உள்ளீடு",manualPh:"SKU / பார்கோடு உள்ளிடவும்",manualAddBtn:"சேர்",manualHint:"24 போன்ற எண்ணிக்கையை உள்ளிட்டு ஒரே முறையில் 24 பொருட்களை சேர்க்கலாம். கேமரா ஸ்கேன் ஒவ்வொன்றும் +1 ஆகும்.",
 lastEntry:"கடைசி பதிவு",waiting:"ஸ்கேன் அல்லது உள்ளீட்டுக்காக காத்திருக்கிறது…",currentQty:"தற்போதைய எண்ணிக்கை: ",total:"மொத்த எண்ணிக்கை",unique:"SKU வகைகள்",
-photoMode:"ஒவ்வொரு ஆர்டருக்கும் புகைப்படம்",photoModeHint:"இயக்கினால், ஒவ்வொரு ஸ்கேனும் ஆர்டர் எண்ணாகி ஒரு புகைப்படம் எடுக்கப்படும்",photoHold:"ஸ்கேன் முடிந்தது. பொருளை அசைக்காமல் வையுங்கள்; 1 வினாடியில் புகைப்படம் எடுக்கப்படும்…",photoOff:"ஆர்டர் புகைப்படம் முடக்கப்பட்டுள்ளது",photoReady:"இணைக்கப்பட்ட புகைப்படங்கள்: ",photoTaking:"புகைப்படம் சேமிக்கப்படுகிறது…",photoError:"புகைப்படப் பதிவேற்றம் தோல்வியடைந்தது. இந்த ஆர்டரை மீண்டும் ஸ்கேன் செய்யவும்.",photoWaiting:"புகைப்படங்கள் இன்னும் பதிவேற்றப்படுகின்றன. பணி முடிப்பதற்கு முன் காத்திருக்கவும்.",undo:"கடைசி பதிவை ரத்து செய்",excel:"Excel உருவாக்கு",copy:"விவரங்களை நகலெடு",copySuccess:"தற்போதைய பணி விவரங்கள் நகலெடுக்கப்பட்டன",copyFailed:"நகலெடுக்க முடியவில்லை. தயவுசெய்து கைமுறையாக நகலெடுக்கவும்.",newTask:"முடித்து புதிய பணியை தொடங்கு",details:"SKU விவரங்கள்",searchPh:"SKU தேடுக",
+photoMode:"ஒவ்வொரு ஆர்டருக்கும் புகைப்படம்",photoModeHint:"இயக்கினால், அடுத்த ஆர்டரை ஸ்கேன் செய்வதற்கு முன் கைமுறையாக புகைப்படம் எடுக்கவும்",photoAction:"📷 புகைப்படம் எடுத்து தொடரவும்",photoReadyToTake:"ஸ்கேன் செய்யப்பட்ட ஆர்டர்: ",photoCaptureFailed:"புகைப்படப் பதிவேற்றம் தோல்வியடைந்தது. தொடர்வதற்கு முன் மீண்டும் எடுக்கவும்.",photoHold:"ஸ்கேன் முடிந்தது. பொருளை அசைக்காமல் வையுங்கள்; 1 வினாடியில் புகைப்படம் எடுக்கப்படும்…",photoOff:"ஆர்டர் புகைப்படம் முடக்கப்பட்டுள்ளது",photoReady:"இணைக்கப்பட்ட புகைப்படங்கள்: ",photoTaking:"புகைப்படம் சேமிக்கப்படுகிறது…",photoError:"புகைப்படப் பதிவேற்றம் தோல்வியடைந்தது. இந்த ஆர்டரை மீண்டும் ஸ்கேன் செய்யவும்.",photoWaiting:"புகைப்படங்கள் இன்னும் பதிவேற்றப்படுகின்றன. பணி முடிப்பதற்கு முன் காத்திருக்கவும்.",undo:"கடைசி பதிவை ரத்து செய்",excel:"Excel உருவாக்கு",copy:"விவரங்களை நகலெடு",copySuccess:"தற்போதைய பணி விவரங்கள் நகலெடுக்கப்பட்டன",copyFailed:"நகலெடுக்க முடியவில்லை. தயவுசெய்து கைமுறையாக நகலெடுக்கவும்.",newTask:"முடித்து புதிய பணியை தொடங்கு",details:"SKU விவரங்கள்",searchPh:"SKU தேடுக",
 syncTitle:"☁️ கிளவுட் ஒத்திசைவு",syncReady:"இணைக்கப்பட்டது · பணி முடிந்ததும் தானாக பதிவேற்றம்",syncing:"பணி ஒத்திசைக்கப்படுகிறது…",syncSuccess:"ஒத்திசைவு வெற்றி. புதிய பணி தொடங்குகிறது…",syncFailed:"ஒத்திசைவு தோல்வி. மீண்டும் முயற்சிக்க சாதனத்தில் பாதுகாப்பாக சேமிக்கப்பட்டது",pendingPrefix:"ஒத்திசைக்காத பணிகள்: ",retry:"மீண்டும் முயற்சி",needEmployee:"ஊழியர் பெயரை உள்ளிடவும்",needData:"இன்னும் ஸ்கேன் தரவு இல்லை",
 noData:"தரவு இல்லை",undone:"ரத்து செய்யப்பட்டது: ",noScan:"இன்னும் ஸ்கேன் தரவு இல்லை",confirmNew:"இந்த பணியை முடித்து புதிய பணியை தொடங்கவா?",
 camStarting:"கேமரா தொடங்குகிறது…",camReady:"கேமரா தயார் · 30 FPS · 2 வினாடி மீள்-ஸ்கேன் தடுப்பு · முழு காட்சி ஸ்கேன்",camError:"கேமரா தொடங்கவில்லை. மீண்டும் தொடங்க கீழே அழுத்தவும்.",
@@ -221,7 +222,7 @@ const $=id=>document.getElementById(id);
 const employeeName=$("employeeName"),taskDate=$("taskDate"),taskName=$("taskName");
 const manualInput=$("manualInput"),lastCode=$("lastCode"),lastQty=$("lastQty"),totalCount=$("totalCount"),uniqueCount=$("uniqueCount");
 const skuList=$("skuList"),searchInput=$("searchInput"),flash=$("flash"),langBtn=$("langBtn"),camStatus=$("camStatus"),restartBtn=$("restartBtn");
-const photoMode=$("photoMode"),photoStatus=$("photoStatus");
+const photoMode=$("photoMode"),photoStatus=$("photoStatus"),capturePhotoBtn=$("capturePhotoBtn");
 const syncTitle=$("syncTitle"),syncStatus=$("syncStatus"),retryBtn=$("retryBtn"),finishBtn=$("finishBtn");
 
 function t(k){return I18N[lang][k]||k}
@@ -242,9 +243,10 @@ taskDate.value=todayLocal();
 const savedName=localStorage.getItem("warehouse_employee_name");if(savedName)employeeName.value=savedName;
 employeeName.addEventListener("change",()=>localStorage.setItem("warehouse_employee_name",employeeName.value.trim()));
 photoMode.checked=localStorage.getItem("warehouse_photo_mode")==="1";
-photoMode.addEventListener("change",()=>{localStorage.setItem("warehouse_photo_mode",photoMode.checked?"1":"0");updatePhotoStatus()});
+photoMode.addEventListener("change",()=>{localStorage.setItem("warehouse_photo_mode",photoMode.checked?"1":"0");if(!photoMode.checked&&!photoPendingCode)capturePhotoBtn.style.display="none";updatePhotoStatus()});
 function updatePhotoStatus(kind){
  if(!photoMode.checked){photoStatus.textContent=t("photoOff");photoStatus.className="photo-status";return}
+ if(kind==="ready"){photoStatus.textContent=t("photoReadyToTake")+photoPendingCode;photoStatus.className="photo-status ok";return}
  if(kind==="hold"){photoStatus.textContent=t("photoHold");photoStatus.className="photo-status";return}
  if(kind==="taking"){photoStatus.textContent=t("photoTaking");photoStatus.className="photo-status";return}
  if(kind==="error"){photoStatus.textContent=t("photoError");photoStatus.className="photo-status err";return}
@@ -305,8 +307,15 @@ const formats=[
 
 function onScan(code){
  const now=Date.now();
- if(code===lastDecoded && now-lastAt<2000)return;
+ if(photoPendingCode)return;
+ if(now-lastAt<900)return;
+ if(code===lastDecoded&&now-lastAt<2000)return;
  lastDecoded=code;lastAt=now;add(code);
+ if(photoMode.checked){
+   photoPendingCode=code;
+   capturePhotoBtn.style.display="block";
+   updatePhotoStatus("ready");
+ }
 }
 
 async function enhanceCamera(){
@@ -397,6 +406,23 @@ function captureOrderPhoto(orderNo){
      finally{photoUploadCount--;resolve(saved)}
    }, "image/jpeg", .86);
  });
+}
+
+async function capturePendingOrderPhoto(){
+ if(!photoPendingCode)return;
+ const code=photoPendingCode;
+ capturePhotoBtn.disabled=true;
+ const saved=await captureOrderPhoto(code);
+ if(saved){
+   photoPendingCode="";
+   capturePhotoBtn.style.display="none";
+   lastAt=Date.now();
+   updatePhotoStatus();
+ }else{
+   photoStatus.textContent=t("photoCaptureFailed");
+   photoStatus.className="photo-status err";
+ }
+ capturePhotoBtn.disabled=false;
 }
 
 function undoLast(){
