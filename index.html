@@ -23,7 +23,7 @@ textarea{min-height:75px;resize:vertical}
 button{border:1px solid rgba(255,255,255,.15);padding:13px;font-weight:800;background:linear-gradient(145deg,#fff,#d9d9dc);color:#111;box-shadow:0 5px 14px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.8);letter-spacing:.1px}
 .dark{background:linear-gradient(145deg,#3b3b3f,#1b1b1e);color:#fff;border-color:#4a4a50;box-shadow:0 5px 14px rgba(0,0,0,.3),inset 0 1px rgba(255,255,255,.08)}.red{background:linear-gradient(145deg,#7e2727,#3d1114);color:#fff0f0;border-color:#a34343;box-shadow:0 5px 14px rgba(67,0,0,.28),inset 0 1px rgba(255,255,255,.12)}
 .camera-card{padding:0;overflow:hidden}
-.camera-wrap{position:relative;background:#050505;height:min(48vh,360px);min-height:300px;overflow:hidden;transition:height .28s ease}.camera-card.photo-capture-mode .camera-wrap{height:min(75vh,620px);max-height:620px}
+.camera-wrap{position:relative;background:#050505;height:min(52vh,400px);min-height:320px;overflow:hidden}.camera-card.photo-capture-mode .camera-wrap{height:min(52vh,400px);min-height:320px;max-height:400px}
 #reader{width:100%;height:100%;min-height:0}
 #reader video{width:100%!important;height:auto!important;display:block;border-radius:18px}.camera-card.photo-capture-mode #reader video{height:100%!important;object-fit:cover}
 .scan-overlay{position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center}
@@ -47,7 +47,7 @@ button{border:1px solid rgba(255,255,255,.15);padding:13px;font-weight:800;backg
 .flash{position:fixed;inset:0;background:rgba(40,255,110,.28);pointer-events:none;opacity:0;transition:.08s;z-index:999}
 .flash.on{opacity:1}
 #restartBtn{display:none;margin:10px auto 0}
-@media(max-width:540px){.grid,.actions{grid-template-columns:1fr}.row{grid-template-columns:minmax(0,1fr) auto 78px}.camera-wrap,#reader{min-height:300px}.camera-card.photo-capture-mode .camera-wrap{min-height:440px}.scan-box{width:min(60vw,300px)}.corner{width:54px;height:54px}}
+@media(max-width:540px){.grid,.actions{grid-template-columns:1fr}.row{grid-template-columns:minmax(0,1fr) auto 78px}.camera-wrap,#reader{min-height:320px}.camera-card.photo-capture-mode .camera-wrap{min-height:320px}.scan-box{width:min(60vw,300px)}.corner{width:54px;height:54px}}
 
 html{scroll-behavior:smooth}
 button,.card,.stat,input,textarea{
