@@ -22,6 +22,7 @@ input,textarea{width:100%;background:#1c1c1e;color:#fff;border:1px solid #333;pa
 textarea{min-height:75px;resize:vertical}
 button{border:1px solid rgba(255,255,255,.15);padding:13px;font-weight:800;background:linear-gradient(145deg,#fff,#d9d9dc);color:#111;box-shadow:0 5px 14px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.8);letter-spacing:.1px}
 .dark{background:linear-gradient(145deg,#3b3b3f,#1b1b1e);color:#fff;border-color:#4a4a50;box-shadow:0 5px 14px rgba(0,0,0,.3),inset 0 1px rgba(255,255,255,.08)}.red{background:linear-gradient(145deg,#7e2727,#3d1114);color:#fff0f0;border-color:#a34343;box-shadow:0 5px 14px rgba(67,0,0,.28),inset 0 1px rgba(255,255,255,.12)}
+#setupPage,#scanPage{min-width:0}.page-start{width:100%;font-size:17px;padding:16px}.scan-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.scan-nav b{font-size:16px}
 .camera-card{padding:0;overflow:hidden}
 .camera-wrap{position:relative;background:#050505;min-height:360px;overflow:hidden}.camera-card.photo-capture-mode .camera-wrap{min-height:360px}
 #reader{width:100%;min-height:360px}
@@ -86,6 +87,7 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
 <body>
 <div class="flash" id="flash"></div>
 <div class="wrap">
+  <div id="setupPage">
   <div class="card header">
     <button class="langbtn" id="langBtn" onclick="toggleLang()">EN</button>
     <h1 data-i18n="title">📦 仓库 SKU 扫码计数器</h1>
@@ -101,7 +103,11 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
       <div><label data-i18n="taskName">任务名称</label><input id="taskName" data-ph="taskNamePh" placeholder="例如：退货盘点"></div>
     </div>
   </div>
+  <div class="card"><button class="page-start" onclick="goScanPage()">开始扫码 →</button></div>
+  </div>
 
+  <div id="scanPage" class="hidden">
+  <div class="scan-nav"><button class="dark" onclick="backToSetup()">← 返回</button><b>扫码中</b><span></span></div>
   <div class="syncbar"><div><b id="syncTitle">☁️ 云端同步</b><br><span id="syncStatus">准备中…</span></div><button id="retryBtn" class="dark" style="padding:9px 12px;display:none" onclick="retryPending()">重试</button></div>
 
   <div class="card photo-option">
@@ -165,6 +171,7 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
     <b data-i18n="details">SKU 明细</b>
     <input id="searchInput" class="search" data-ph="searchPh" placeholder="搜索 SKU" oninput="render()">
     <div id="skuList" style="margin-top:8px"></div>
+  </div>
   </div>
 </div>
 
@@ -356,6 +363,21 @@ async function enhanceCamera(){
  }catch(e){}
 }
 
+async function stopCamera(){
+ try{if(html5QrCode&&cameraRunning)await html5QrCode.stop()}catch(e){}
+ cameraRunning=false;
+ try{if(html5QrCode)await html5QrCode.clear()}catch(e){}
+ html5QrCode=null;
+}
+async function goScanPage(){
+ if(!employeeName.value.trim())return alert(t("needEmployee"));
+ localStorage.setItem("warehouse_employee_name",employeeName.value.trim());
+ setupPage.classList.add("hidden");scanPage.classList.remove("hidden");
+ window.scrollTo(0,0);await startCamera();
+}
+async function backToSetup(){
+ await stopCamera();scanPage.classList.add("hidden");setupPage.classList.remove("hidden");window.scrollTo(0,0);
+}
 async function startCamera(){
  restartBtn.style.display="none";camStatus.textContent=t("camStarting");
  try{
@@ -631,7 +653,6 @@ async function newTask(){
 applyLang();
 applyMode();
 updatePhotoStatus();
-startCamera();
 setTimeout(retryPending,800);
 </script>
 </body>
