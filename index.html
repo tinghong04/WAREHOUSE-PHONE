@@ -504,7 +504,7 @@ function updateInboundUI(){
 async function captureInboundPhoto(){
  if(currentMode!=="count"||countPurpose!=="inbound"||!inboundBatchNo)return;
  if(!inboundPhotoArmed){
-   captureInboundBtn.disabled=true;inboundStatus.textContent="正在准备照片服务…";
+   photoLastError="";captureInboundBtn.disabled=true;inboundStatus.textContent="正在准备照片服务…";
    try{await ensurePhotoUser();}catch(e){photoLastError=e?.message||"匿名照片权限未就绪";}
    captureInboundBtn.disabled=false;
    if(photoLastError){inboundStatus.textContent="照片服务未就绪："+photoLastError;return}
