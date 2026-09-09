@@ -478,7 +478,7 @@ function captureOrderPhoto(orderNo){
      try{
        if(!blob)throw new Error("No photo data");
        const userId=await ensurePhotoUser();
-       const fileName=`${Date.now()}_${safeName(orderNo)}.jpg`;
+       const fileName=`${Date.now()}_photo.jpg`;
        const path=`${userId}/${currentTaskId}/${fileName}`;
        const uploaded=await photoSb.storage.from("task-order-photos").upload(path,blob,{contentType:"image/jpeg",cacheControl:"31536000",upsert:false});
        if(uploaded.error)throw uploaded.error;
