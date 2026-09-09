@@ -51,7 +51,12 @@ button{border:1px solid rgba(255,255,255,.15);padding:13px;font-weight:800;backg
 #restartBtn{display:none;margin:10px auto 0}
 @media(max-width:540px){.grid,.actions{grid-template-columns:1fr}.row{grid-template-columns:minmax(0,1fr) auto 78px}.camera-wrap,#reader{min-height:330px}.camera-card.photo-capture-mode .camera-wrap{min-height:330px}.scan-box{width:min(60vw,300px)}.corner{width:54px;height:54px}}
 
-html{scroll-behavior:smooth}
+html,body{height:100%;overflow:hidden}html{scroll-behavior:smooth}
+.wrap{height:100dvh;overflow:hidden;padding-bottom:92px}
+#setupPage,#infoPage,#scanPage:not(.reviewing){height:calc(100dvh - 92px);min-height:0;overflow:hidden}
+#scanPage.reviewing{height:calc(100dvh - 92px);min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-bottom:18px}
+#setupPage .page-footer,#infoPage .page-footer{flex:none}
+@media(max-height:650px){.wrap{padding-top:7px}#setupPage,#infoPage,#scanPage:not(.reviewing),#scanPage.reviewing{height:calc(100dvh - 82px)}.bottom-tabs{bottom:max(5px,env(safe-area-inset-bottom))}}
 button,.card,.stat,input,textarea{
   -webkit-tap-highlight-color:transparent;
 }
