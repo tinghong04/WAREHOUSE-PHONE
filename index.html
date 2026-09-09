@@ -493,6 +493,7 @@ function captureOrderPhoto(orderNo){
  });
 }
 
+function inboundPhotoCount(){return orderPhotos.filter(x=>String(x.order_no).startsWith("入库照片")).length}
 function updateInboundUI(){
  if(!inboundStatus)return;
  const inbound=currentMode==="count"&&countPurpose==="inbound";
@@ -532,9 +533,10 @@ async function captureInboundException(){
  const note=prompt("填写异常备注（例如：外箱破损、数量不符）：");
  const photo=orderPhotos[orderPhotos.length-1];
  if(photo)photo.order_no="异常："+(note===null||!note.trim()?"未填写备注":note.trim())+" · 批次："+inboundBatchNo;
- localStorage.setItem("warehouse_current_task_photos",JSON.stringify(orderPhotos));updateInboundUI();
+ localStorage.setItem("warehouse_current_task_photos",JSON.stringify(orderPhotos));scanLockedUntil=Date.now()+400;lastAt=Date.now();updateInboundUI();
 }
 function finishInboundPhotos(){
+ if(inboundBatchPhotoTaken)return startInboundCounting();
  if(inboundPhotoCount()<1)return alert("请至少拍一张本批次货物照片");
  inboundBatchPhotoTaken=true;localStorage.setItem("warehouse_inbound_batch_photo","1");updateInboundUI();
 }
