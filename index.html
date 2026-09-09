@@ -42,7 +42,7 @@ button{border:1px solid rgba(255,255,255,.15);padding:13px;font-weight:800;backg
 .actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.full{grid-column:1/-1}#copyOrdersBtn{display:none}.mode-order #copyOrdersBtn{display:block}
 .syncbar{display:flex;justify-content:space-between;gap:10px;align-items:center;background:#151515;border:1px solid #292929;border-radius:14px;padding:10px 12px;margin-bottom:12px}
 .mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:9px}.mode-btn{padding:14px 10px;background:#202024;color:#c8c8cc;border:1px solid #38383d}.mode-btn.active{background:linear-gradient(145deg,#fff,#dcdcdf);color:#111;border-color:#fff}.mode-note{margin-top:10px}.purpose-switch{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.purpose-btn{padding:11px 8px;background:#171719;color:#bbb;border:1px solid #333}.purpose-btn.active{background:#2b7253;color:#fff;border-color:#54b987}.mode-order #excelBtn,.mode-order #copyTaskBtn{display:none}.mode-inbound #taskNameField{display:none}.photo-option{display:none;align-items:center;justify-content:space-between;gap:12px}.inbound-panel{display:none;background:rgba(14,28,20,.94);border:1px solid #2f6548;backdrop-filter:blur(10px)}.camera-wrap .inbound-panel{position:absolute;left:12px;right:12px;bottom:12px;z-index:6;border-radius:15px;padding:11px}.mode-inbound .inbound-panel{display:block}.inbound-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px}.inbound-actions button{padding:11px 8px}.inbound-actions .inbound-start{grid-column:1/-1;background:linear-gradient(145deg,#2f9b65,#17633e);color:#fff}.photo-option b{display:block;font-size:15px}.photo-option .muted{margin-top:3px}.switch{position:relative;width:52px;height:30px;flex:none}.switch input{opacity:0;width:0;height:0}.slider{position:absolute;inset:0;background:#343438;border:1px solid #505055;border-radius:999px;transition:.2s}.slider:before{content:"";position:absolute;width:22px;height:22px;left:3px;top:3px;background:#fff;border-radius:50%;box-shadow:0 2px 5px rgba(0,0,0,.35);transition:.2s}.switch input:checked + .slider{background:#1d8d58;border-color:#42b97e}.switch input:checked + .slider:before{transform:translateX(22px)}.photo-controls{position:absolute;left:12px;right:12px;bottom:12px;z-index:5;display:none;padding:11px;background:rgba(10,10,10,.88);border:1px solid rgba(255,255,255,.18);border-radius:15px;backdrop-filter:blur(10px)}.photo-status{margin-bottom:8px;font-size:12px;color:#ddd}.photo-status.ok{color:#83f6b0}.photo-status.err{color:#ffadad}.photo-action{width:100%;background:linear-gradient(145deg,#2f9b65,#17633e);color:#fff;border-color:#52bb82}.syncbar b{font-size:13px}.syncbar span{font-size:12px;color:#aaa}.syncok{color:#7dff9d!important}.syncwarn{color:#ffd27d!important}.syncerr{color:#ff9f9f!important}.busy{opacity:.55;pointer-events:none}
-.row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;padding:11px 0;border-bottom:1px solid #262626}.scan-qty-controls{position:absolute;left:12px;right:12px;top:12px;z-index:7;display:flex;gap:7px;align-items:center;padding:8px;background:rgba(10,10,10,.82);border:1px solid rgba(255,255,255,.16);border-radius:12px}.mode-order .scan-qty-controls{display:none}.scan-qty-label{font-size:12px;color:#ddd;margin-right:auto}.scan-qty-btn{padding:7px 10px;background:#252528;color:#ddd}.scan-qty-btn.active{background:#f2f2f2;color:#111}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;padding:11px 0;border-bottom:1px solid #262626}.scan-qty-controls{position:absolute;left:12px;right:12px;top:12px;z-index:7;display:flex;gap:7px;align-items:center;padding:8px;background:rgba(10,10,10,.82);border:1px solid rgba(255,255,255,.16);border-radius:12px}.mode-order .scan-qty-controls{display:none}.scan-qty-label{font-size:12px;color:#ddd;margin-right:auto}.scan-qty-btn{padding:7px 10px;background:#252528;color:#ddd}.scan-qty-btn.active{background:#f2f2f2;color:#111}.scan-step-action{margin:0 0 12px}.scan-step-action button{width:100%;background:linear-gradient(145deg,#2f9b65,#17633e);color:#fff}.reviewing .camera-card,.reviewing .scan-hint,.reviewing .scan-only,.reviewing .scan-step-action{display:none!important}.review-title{display:flex;align-items:center;justify-content:space-between;gap:8px}.review-title b{font-size:17px}
 .pill{background:#222;border-radius:999px;padding:6px 9px;font-weight:800}.mini{padding:7px 10px;border-radius:9px;background:#222;color:#fff}.qtyedit{width:84px!important;text-align:center;font-weight:900;padding:8px 7px!important;border-radius:11px!important;background:#1c1c1e!important}
 .search{margin-top:10px}
 .flash{position:fixed;inset:0;background:rgba(40,255,110,.28);pointer-events:none;opacity:0;transition:.08s;z-index:999}
@@ -139,11 +139,13 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
     </div>
   </div>
 
-  <div class="muted" style="margin:-4px 8px 12px;text-align:center" data-i18n="scanHint">
+  <div class="muted scan-hint" style="margin:-4px 8px 12px;text-align:center" data-i18n="scanHint">
     白色正方形只是瞄准参考；实际会识别整张相机画面，远一点也能尝试识别。
   </div>
 
-  <div class="card">
+  <div class="scan-step-action"><button onclick="goReview()">查看已扫描 / 完成 →</button></div>
+
+  <div class="card scan-only">
     <label data-i18n="manualLabel">手动输入 SKU / 条码内容</label>
     <div class="manual">
       <input id="manualInput" data-ph="manualPh" placeholder="输入 SKU / 条码">
@@ -152,12 +154,14 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
     <div class="muted" style="margin-top:8px" data-i18n="manualHint">手动输入和摄像头扫码都每次 +1；数量可在下方 SKU 明细直接修改。</div>
   </div>
 
-  <div class="card">
+  <div class="card scan-only">
     <div class="muted" data-i18n="lastEntry">刚刚录入</div>
     <div class="last" id="lastCode">等待扫描或输入…</div>
     <div class="qty" id="lastQty">当前数量：0</div>
   </div>
 
+  <div id="reviewArea" class="hidden">
+  <div class="card review-title"><b>核对本次任务</b><button class="dark" onclick="continueScanning()">← 继续扫码</button></div>
   <div class="stats">
     <div class="stat"><span data-i18n="total">总数量</span><b id="totalCount">0</b></div>
     <div class="stat"><span data-i18n="unique">SKU 种类</span><b id="uniqueCount">0</b></div>
@@ -177,6 +181,7 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
     <b data-i18n="details">SKU 明细</b>
     <input id="searchInput" class="search" data-ph="searchPh" placeholder="搜索 SKU" oninput="render()">
     <div id="skuList" style="margin-top:8px"></div>
+  </div>
   </div>
   </div>
 </div>
@@ -419,7 +424,15 @@ async function goScanPage(){
  window.scrollTo(0,0);await startCamera();
 }
 async function backToSetup(){
- await stopCamera();scanPage.classList.add("hidden");setupPage.classList.remove("hidden");window.scrollTo(0,0);
+ await stopCamera();reviewArea.classList.add("hidden");scanPage.classList.remove("reviewing");scanPage.classList.add("hidden");setupPage.classList.remove("hidden");window.scrollTo(0,0);
+}
+async function goReview(){
+ if(photoPendingCode)return alert("请先完成当前单号的拍照");
+ if(!Object.keys(counts).length)return alert("请先扫描至少一条记录");
+ await stopCamera();reviewArea.classList.remove("hidden");scanPage.classList.add("reviewing");window.scrollTo(0,0);
+}
+async function continueScanning(){
+ reviewArea.classList.add("hidden");scanPage.classList.remove("reviewing");window.scrollTo(0,0);await startCamera();
 }
 async function startCamera(){
  restartBtn.style.display="none";camStatus.textContent=t("camStarting");
