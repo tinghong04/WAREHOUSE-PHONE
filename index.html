@@ -472,7 +472,7 @@ async function openAppTab(tab){
    if(!employeeName.value.trim()){alert(t("needEmployee"));return openAppTab("info")}
    return openCameraPage();
  }
- if(tab==="data"){if(!Object.keys(counts).length){showCameraNotice("还没有扫描数据");return}if(scanPage.classList.contains("hidden")){setupPage.classList.add("hidden");infoPage.classList.add("hidden");scanPage.classList.remove("hidden")}if(!scanPage.classList.contains("reviewing"))return goReview();setActiveTab("data");}
+ if(tab==="data"){if(!Object.keys(counts).length){setActiveTab("camera");showCameraNotice("还没有扫描数据");return}if(scanPage.classList.contains("hidden")){setupPage.classList.add("hidden");infoPage.classList.add("hidden");scanPage.classList.remove("hidden")}if(!scanPage.classList.contains("reviewing"))return goReview();setActiveTab("data");}
 }
 function goInfoPage(){
  setupPage.classList.add("hidden");infoPage.classList.remove("hidden");setActiveTab("info");window.scrollTo(0,0);
