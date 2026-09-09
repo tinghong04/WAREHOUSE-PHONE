@@ -79,6 +79,7 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
 #scanPage:not(.reviewing) .scan-step-action{position:sticky;bottom:10px;z-index:20;margin:12px 0 0;padding:0 2px}
 #scanPage:not(.reviewing) .scan-step-action button{min-height:52px;font-size:16px;box-shadow:0 10px 26px rgba(0,0,0,.35)}
 .app-page{min-height:calc(100dvh - 52px);display:flex;flex-direction:column}.app-page.hidden{display:none!important}.page-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;min-height:46px}.page-top b{font-size:17px}.page-footer{margin-top:auto;padding-top:12px}.mode-card{margin-top:auto;margin-bottom:12px}.mode-btn{min-height:116px;font-size:17px;line-height:1.8}.mode-btn:first-letter{font-size:26px}.mode-note{min-height:38px}.app-page:not(#scanPage) .card{margin-bottom:12px}@media(max-height:720px){.app-page{min-height:calc(100dvh - 28px)}.header{padding:12px}.mode-btn{min-height:88px;padding:9px}.mode-note{min-height:24px}.page-start{padding:13px}.grid{gap:7px}input{padding:10px}}
+.bottom-tabs{position:fixed;left:50%;bottom:max(10px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:90;width:min(720px,calc(100% - 24px));display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:7px;background:rgba(20,20,22,.94);border:1px solid rgba(255,255,255,.13);border-radius:18px;box-shadow:0 14px 35px rgba(0,0,0,.5);backdrop-filter:blur(18px)}.bottom-tabs button{padding:7px 4px;background:transparent;color:#999;border:0;box-shadow:none;font-size:11px;line-height:1.25}.bottom-tabs button span{display:block;font-size:19px;margin-bottom:2px}.bottom-tabs button.active{background:#f3f3f5;color:#121214;border-radius:12px}.wrap{padding-bottom:98px}
 </style>
 
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=2">
@@ -194,6 +195,7 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
   </div>
   </div>
   </div>
+  <nav class="bottom-tabs" aria-label="功能导航"><button data-tab="mode" onclick="openAppTab('mode')"><span>◉</span>模式</button><button data-tab="info" onclick="openAppTab('info')"><span>□</span>资料</button><button data-tab="camera" onclick="openAppTab('camera')"><span>⌁</span>相机</button><button data-tab="data" onclick="openAppTab('data')"><span>▦</span>数据</button></nav>
 </div>
 
 <script>
@@ -437,29 +439,48 @@ async function stopCamera(){
  try{if(html5QrCode)await html5QrCode.clear()}catch(e){}
  html5QrCode=null;
 }
+function setActiveTab(tab){
+ document.querySelectorAll(".bottom-tabs [data-tab]").forEach(button=>button.classList.toggle("active",button.dataset.tab===tab));
+}
+async function openAppTab(tab){
+ if(tab==="mode"){
+   if(!scanPage.classList.contains("hidden"))await stopCamera();
+   reviewArea.classList.add("hidden");scanPage.classList.remove("reviewing");scanPage.classList.add("hidden");infoPage.classList.add("hidden");setupPage.classList.remove("hidden");setActiveTab("mode");window.scrollTo(0,0);return;
+ }
+ if(tab==="info"){
+   if(!scanPage.classList.contains("hidden"))await stopCamera();
+   reviewArea.classList.add("hidden");scanPage.classList.remove("reviewing");scanPage.classList.add("hidden");setupPage.classList.add("hidden");infoPage.classList.remove("hidden");setActiveTab("info");window.scrollTo(0,0);return;
+ }
+ if(tab==="camera"){
+   if(!employeeName.value.trim()){alert(t("needEmployee"));return openAppTab("info")}
+   if(!scanPage.classList.contains("hidden")&&!scanPage.classList.contains("reviewing")){setActiveTab("camera");return}
+   setupPage.classList.add("hidden");infoPage.classList.add("hidden");reviewArea.classList.add("hidden");scanPage.classList.remove("reviewing");scanPage.classList.remove("hidden");setActiveTab("camera");window.scrollTo(0,0);syncWorkflowStage();await startCamera();return;
+ }
+ if(tab==="data"){if(!Object.keys(counts).length){alert(t("needData"));return}if(scanPage.classList.contains("hidden")){setupPage.classList.add("hidden");infoPage.classList.add("hidden");scanPage.classList.remove("hidden")}if(!scanPage.classList.contains("reviewing"))return goReview();setActiveTab("data");}
+}
 function goInfoPage(){
- setupPage.classList.add("hidden");infoPage.classList.remove("hidden");window.scrollTo(0,0);
+ setupPage.classList.add("hidden");infoPage.classList.remove("hidden");setActiveTab("info");window.scrollTo(0,0);
 }
 function backToModePage(){
- infoPage.classList.add("hidden");setupPage.classList.remove("hidden");window.scrollTo(0,0);
+ infoPage.classList.add("hidden");setupPage.classList.remove("hidden");setActiveTab("mode");window.scrollTo(0,0);
 }
 async function goScanPage(){
  if(!employeeName.value.trim())return alert(t("needEmployee"));
  localStorage.setItem("warehouse_employee_name",employeeName.value.trim());
  localStorage.setItem("warehouse_customer_name",customerName.value.trim());
  infoPage.classList.add("hidden");scanPage.classList.remove("hidden");
- window.scrollTo(0,0);syncWorkflowStage();await startCamera();
+ setActiveTab("camera");window.scrollTo(0,0);syncWorkflowStage();await startCamera();
 }
 async function backToSetup(){
- await stopCamera();reviewArea.classList.add("hidden");scanPage.classList.remove("reviewing");scanPage.classList.add("hidden");infoPage.classList.remove("hidden");window.scrollTo(0,0);
+ await stopCamera();reviewArea.classList.add("hidden");scanPage.classList.remove("reviewing");scanPage.classList.add("hidden");infoPage.classList.remove("hidden");setActiveTab("info");window.scrollTo(0,0);
 }
 async function goReview(){
  if(photoPendingCode)return alert("请先完成当前单号的拍照");
  if(!Object.keys(counts).length)return alert("请先扫描至少一条记录");
- await stopCamera();reviewArea.classList.remove("hidden");scanPage.classList.add("reviewing");setWorkflowStage("review");window.scrollTo(0,0);
+ await stopCamera();reviewArea.classList.remove("hidden");scanPage.classList.add("reviewing");setActiveTab("data");setWorkflowStage("review");window.scrollTo(0,0);
 }
 async function continueScanning(){
- reviewArea.classList.add("hidden");scanPage.classList.remove("reviewing");syncWorkflowStage();window.scrollTo(0,0);await startCamera();
+ reviewArea.classList.add("hidden");scanPage.classList.remove("reviewing");setActiveTab("camera");syncWorkflowStage();window.scrollTo(0,0);await startCamera();
 }
 async function startCamera(){
  restartBtn.style.display="none";camStatus.textContent=t("camStarting");
@@ -826,6 +847,7 @@ async function newTask(){
  }
 }
 
+setActiveTab("mode");
 applyLang();
 applyMode();
 setScanIncrement(scanIncrement);
