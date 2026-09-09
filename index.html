@@ -99,6 +99,7 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
   <div class="card">
     <div class="grid">
       <div><label data-i18n="employee">员工姓名</label><input id="employeeName" data-ph="employeePh" placeholder="例如：Ah Hong"></div>
+      <div><label>客户</label><input id="customerName" placeholder="例如：ABC Trading"></div>
       <div><label data-i18n="date">日期</label><input id="taskDate" type="date" disabled></div>
       <div id="taskNameField"><label data-i18n="taskName">任务名称</label><input id="taskName" data-ph="taskNamePh" placeholder="例如：退货盘点"></div>
     </div>
@@ -248,7 +249,7 @@ employeeCol:"ஊழியர்",dateCol:"தேதி",taskCol:"பணி ப�
 }};
 
 const $=id=>document.getElementById(id);
-const employeeName=$("employeeName"),taskDate=$("taskDate"),taskName=$("taskName");
+const employeeName=$("employeeName"),customerName=$("customerName"),taskDate=$("taskDate"),taskName=$("taskName");
 const manualInput=$("manualInput"),lastCode=$("lastCode"),lastQty=$("lastQty"),totalCount=$("totalCount"),uniqueCount=$("uniqueCount");
 const skuList=$("skuList"),searchInput=$("searchInput"),flash=$("flash"),langBtn=$("langBtn"),camStatus=$("camStatus"),restartBtn=$("restartBtn"),cameraCard=document.querySelector(".camera-card");
 const photoMode=$("photoMode"),photoStatus=$("photoStatus"),capturePhotoBtn=$("capturePhotoBtn"),photoControls=$("photoControls"),countModeBtn=$("countModeBtn"),orderModeBtn=$("orderModeBtn"),modeNote=$("modeNote");
@@ -308,7 +309,9 @@ function applyMode(){
 function todayLocal(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
 taskDate.value=todayLocal();
 const savedName=localStorage.getItem("warehouse_employee_name");if(savedName)employeeName.value=savedName;
+const savedCustomer=localStorage.getItem("warehouse_customer_name");if(savedCustomer)customerName.value=savedCustomer;
 employeeName.addEventListener("change",()=>localStorage.setItem("warehouse_employee_name",employeeName.value.trim()));
+customerName.addEventListener("change",()=>localStorage.setItem("warehouse_customer_name",customerName.value.trim()));
 photoMode.checked=localStorage.getItem("warehouse_photo_mode")==="1";
 photoMode.addEventListener("change",()=>{localStorage.setItem("warehouse_photo_mode",photoMode.checked?"1":"0");if(!photoMode.checked&&!photoPendingCode)photoControls.style.display="none";updatePhotoStatus()});
 function updatePhotoStatus(kind){
@@ -427,6 +430,7 @@ async function stopCamera(){
 async function goScanPage(){
  if(!employeeName.value.trim())return alert(t("needEmployee"));
  localStorage.setItem("warehouse_employee_name",employeeName.value.trim());
+ localStorage.setItem("warehouse_customer_name",customerName.value.trim());
  setupPage.classList.add("hidden");scanPage.classList.remove("hidden");
  window.scrollTo(0,0);await startCamera();
 }
@@ -726,7 +730,7 @@ function makeTaskPayload(){
  const entries=Object.entries(counts);
  return {
    id:uuid(),
-   task_date:taskDate.value,employee_name:employeeName.value.trim(),task_name:(currentMode==="count"&&countPurpose==="inbound"?"":taskName.value.trim()),task_content:(currentMode==="count"&&countPurpose==="inbound"?"inbound":currentMode),batch_no:(currentMode==="count"&&countPurpose==="inbound"?inboundBatchNo:null),
+   task_date:taskDate.value,employee_name:employeeName.value.trim(),customer_name:customerName.value.trim()||null,task_name:(currentMode==="count"&&countPurpose==="inbound"?"":taskName.value.trim()),task_content:(currentMode==="count"&&countPurpose==="inbound"?"inbound":currentMode),batch_no:(currentMode==="count"&&countPurpose==="inbound"?inboundBatchNo:null),
    total_qty:entries.reduce((s,x)=>s+x[1],0),sku_types:entries.length,device_id:deviceId(),
    items:entries.map(([sku,qty])=>({sku,qty})),
    order_photos:orderPhotos.slice()
@@ -740,7 +744,7 @@ function updateSyncStatus(){
  else{setSync(t("syncReady"),"syncok");retryBtn.style.display="none"}
 }
 async function uploadTask(task){
- const taskRow={id:task.id,task_date:task.task_date,employee_name:task.employee_name,task_name:task.task_name,task_content:task.task_content||null,batch_no:task.batch_no||null,total_qty:task.total_qty,sku_types:task.sku_types,device_id:task.device_id};
+ const taskRow={id:task.id,task_date:task.task_date,employee_name:task.employee_name,customer_name:task.customer_name||null,task_name:task.task_name,task_content:task.task_content||null,batch_no:task.batch_no||null,total_qty:task.total_qty,sku_types:task.sku_types,device_id:task.device_id};
  let r=await sb.from("tasks").insert(taskRow);
  if(r.error && r.error.code!=="23505")throw r.error;
  const chunks=[];for(let i=0;i<task.items.length;i+=100)chunks.push(task.items.slice(i,i+100));
@@ -773,6 +777,7 @@ async function newTask(){
  if(!employeeName.value.trim())return alert(t("needEmployee"));
  if(!confirm(t("confirmNew")))return;
  localStorage.setItem("warehouse_employee_name",employeeName.value.trim());
+ localStorage.setItem("warehouse_customer_name",customerName.value.trim());
  const task=makeTaskPayload();
  const arr=pendingTasks();arr.push(task);savePending(arr);
  finishBtn.classList.add("busy");retryBtn.style.display="none";setSync(t("syncing"),"syncwarn");
