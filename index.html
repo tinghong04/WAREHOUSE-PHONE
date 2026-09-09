@@ -289,29 +289,25 @@ function applyLang(){
 }
 function toggleLang(){lang=lang==="zh"?"en":(lang==="en"?"ta":"zh");localStorage.setItem("warehouse_lang",lang);applyLang();applyMode()}
 function discardDraftForModeChange(){
- counts={};history=[];orderPhotos=[];photoPendingCode="";inboundCountingStarted=false;inboundBatchNo="";inboundBatchPhotoTaken=false;inboundPhotoArmed=false;exceptionPhotoArmed=false;
+ counts={};history=[];orderPhotos=[];photoPendingCode="";photoUploadCount=0;photoLastError="";inboundCountingStarted=false;inboundBatchNo="";inboundBatchPhotoTaken=false;inboundPhotoArmed=false;exceptionPhotoArmed=false;lastDecoded="";lastAt=0;scanLockedUntil=0;
  localStorage.removeItem("warehouse_current_task_photos");localStorage.removeItem("warehouse_inbound_counting");localStorage.removeItem("warehouse_inbound_batch_no");localStorage.removeItem("warehouse_inbound_batch_photo");
  currentTaskId=uuid();localStorage.setItem("warehouse_current_task_id",currentTaskId);
+ if(manualInput)manualInput.value="";reviewArea.classList.add("hidden");scanPage.classList.remove("reviewing");
  lastCode.textContent=t("waiting");lastQty.textContent=t("currentQty")+"0";
- updatePhotoStatus();scheduleRender();
+ updatePhotoStatus();updateInboundUI();scheduleRender();
 }
 function setMode(mode){
  if(mode===currentMode)return;
- const hasDraft=Object.keys(counts).length||orderPhotos.length;
- if(hasDraft){
-   const message=scanPage.classList.contains("hidden")
-     ?"检测到上一次未提交的临时记录。切换模式会清空这些临时记录，是否继续？"
-     :"当前任务已有扫码或照片。请先完成任务，或返回后重新进入并确认清空。";
-   if(!confirm(message))return;
-   discardDraftForModeChange();
- }
+ const hasDraft=Object.keys(counts).length||orderPhotos.length||inboundBatchNo;
+ if(hasDraft&&!confirm("切换模式会清空当前未完成任务，是否继续？"))return;
+ discardDraftForModeChange();
  currentMode=mode;localStorage.setItem("warehouse_task_mode",mode);applyMode();
 }
 function setCountPurpose(purpose){
  if(purpose===countPurpose)return;
- const hasDraft=Object.keys(counts).length||orderPhotos.length;
- if(hasDraft&&!confirm("切换用途会清空当前未提交的临时记录，是否继续？"))return;
- if(hasDraft)discardDraftForModeChange();
+ const hasDraft=Object.keys(counts).length||orderPhotos.length||inboundBatchNo;
+ if(hasDraft&&!confirm("切换用途会清空当前未完成任务，是否继续？"))return;
+ discardDraftForModeChange();
  countPurpose=purpose;localStorage.setItem("warehouse_count_purpose",purpose);applyMode();
 }
 function applyMode(){
