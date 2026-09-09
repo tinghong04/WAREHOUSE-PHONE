@@ -130,7 +130,7 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
       <div id="scanQuantityControls" class="scan-qty-controls"><span class="scan-qty-label">每扫一次</span><button id="scanQty1" class="scan-qty-btn" onclick="setScanIncrement(1)">+1</button><button id="scanQty5" class="scan-qty-btn" onclick="setScanIncrement(5)">+5</button><button id="scanQty10" class="scan-qty-btn" onclick="setScanIncrement(10)">+10</button></div>
       <div id="inboundPanel" class="inbound-panel">
         <b>货物入库</b><div id="inboundStatus" class="muted" style="margin-top:5px">第 1 步：请扫描入库批次号。</div>
-        <div class="inbound-actions"><button id="captureInboundBtn" class="dark" style="display:none" onclick="captureInboundPhoto()">准备拍本批次货物</button><button id="cancelInboundBatchBtn" class="dark" style="display:none" onclick="cancelInboundBatch()">取消并重扫批次</button><button id="exceptionInboundBtn" class="dark" style="display:none" onclick="captureInboundException()">⚠️ 准备记录异常</button><button id="startInboundBtn" class="inbound-start" style="display:none" onclick="finishInboundPhotos()">完成拍照</button></div>
+        <div class="inbound-actions"><button id="captureInboundBtn" class="dark" style="display:none" onclick="captureInboundPhoto()">准备拍本批次货物</button><button id="cancelInboundBatchBtn" class="dark" style="display:none" onclick="cancelInboundBatch()">取消并重扫批次</button><button id="exceptionInboundBtn" class="dark" style="display:none" onclick="captureInboundException()">异常</button><button id="resumeInboundBtn" class="dark" style="display:none" onclick="resumeInboundScanning()">继续扫码</button><button id="startInboundBtn" class="inbound-start" style="display:none" onclick="finishInboundPhotos()">完成拍照</button></div>
       </div>
     </div>
     <div class="camera-status">
@@ -511,11 +511,11 @@ function updateInboundUI(){
  if(!inboundStatus)return;
  const inbound=currentMode==="count"&&countPurpose==="inbound";
  if(!inbound)return;
- captureInboundBtn.style.display="none";startInboundBtn.style.display="none";exceptionInboundBtn.style.display="none";cancelInboundBatchBtn.style.display="none";
+ captureInboundBtn.style.display="none";startInboundBtn.style.display="none";exceptionInboundBtn.style.display="none";resumeInboundBtn.style.display="none";cancelInboundBatchBtn.style.display="none";
  if(!inboundBatchNo){inboundStatus.textContent="第 1 步：请扫描入库批次号。";return}
  if(!inboundBatchPhotoTaken){inboundStatus.textContent="批次："+inboundBatchNo+"。第 2 步：可连续拍多张货物照片，拍完再点完成。";captureInboundBtn.textContent=inboundPhotoArmed?"📷 确认画面，拍照保存":"准备拍本批次货物";captureInboundBtn.style.display="block";startInboundBtn.style.display="block";startInboundBtn.textContent="完成拍照";cancelInboundBatchBtn.style.display="block";return}
  if(!inboundCountingStarted){inboundStatus.textContent="批次："+inboundBatchNo+"。照片已完成，第 3 步：开始扫码盘点。";startInboundBtn.style.display="block";startInboundBtn.textContent="开始扫码盘点";return}
- inboundStatus.textContent="批次："+inboundBatchNo+" · 盘点进行中，可随时记录异常。";exceptionInboundBtn.textContent=exceptionPhotoArmed?"📷 确认画面，拍异常照片":"⚠️ 准备记录异常";exceptionInboundBtn.style.display="block";
+ inboundStatus.textContent=exceptionPhotoArmed?"异常记录中":"批次："+inboundBatchNo+" · 盘点中";exceptionInboundBtn.textContent=exceptionPhotoArmed?"拍异常照片":"异常";exceptionInboundBtn.style.display="block";if(exceptionPhotoArmed)resumeInboundBtn.style.display="block";
 }
 async function captureInboundPhoto(){
  if(currentMode!=="count"||countPurpose!=="inbound"||!inboundBatchNo)return;
@@ -538,15 +538,21 @@ function cancelInboundBatch(){
 }
 async function captureInboundException(){
  if(currentMode!=="count"||countPurpose!=="inbound"||!inboundCountingStarted)return;
- if(!exceptionPhotoArmed){exceptionPhotoArmed=true;updateInboundUI();inboundStatus.textContent="请确认异常画面清楚，然后点“拍异常照片”。";return}
- exceptionInboundBtn.disabled=true;inboundStatus.textContent="正在保存异常照片…";
+ if(!exceptionPhotoArmed){exceptionPhotoArmed=true;updateInboundUI();return}
+ exceptionInboundBtn.disabled=true;inboundStatus.textContent="保存异常照片…";photoLastError="";
  const saved=await captureOrderPhoto("异常照片 · 批次："+inboundBatchNo);
- exceptionInboundBtn.disabled=false;exceptionPhotoArmed=false;
- if(!saved){inboundStatus.textContent="异常照片保存失败："+(photoLastError||"请重试");updateInboundUI();return}
- const note=prompt("填写异常备注（例如：外箱破损、数量不符）：");
+ exceptionInboundBtn.disabled=false;
+ if(!saved){inboundStatus.textContent="异常照片失败："+(photoLastError||"请重试");return}
+ const note=prompt("填写异常备注：");
  const photo=orderPhotos[orderPhotos.length-1];
  if(photo)photo.order_no="异常："+(note===null||!note.trim()?"未填写备注":note.trim())+" · 批次："+inboundBatchNo;
- localStorage.setItem("warehouse_current_task_photos",JSON.stringify(orderPhotos));scanLockedUntil=Date.now()+400;lastAt=Date.now();updateInboundUI();
+ localStorage.setItem("warehouse_current_task_photos",JSON.stringify(orderPhotos));
+ updateInboundUI();
+ try{await restartCamera()}catch(e){}
+}
+async function resumeInboundScanning(){
+ exceptionPhotoArmed=false;scanLockedUntil=Date.now()+350;lastAt=Date.now();updateInboundUI();
+ try{await restartCamera()}catch(e){}
 }
 function finishInboundPhotos(){
  if(inboundBatchPhotoTaken)return startInboundCounting();
