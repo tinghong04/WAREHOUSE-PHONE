@@ -547,7 +547,7 @@ function render(){
      const plus1=document.createElement("button");plus1.className="mini";plus1.textContent="+1";plus1.onclick=()=>changeQty(s,1);
      const plus5=document.createElement("button");plus5.className="mini";plus5.textContent="+5";plus5.onclick=()=>changeQty(s,5);
      const plus10=document.createElement("button");plus10.className="mini";plus10.textContent="+10";plus10.onclick=()=>changeQty(s,10);
-     d.append(a,minus,plus1,plus5,plus10,qty);
+     d.append(a,plus1,plus5,plus10,qty);
    }
    skuList.appendChild(d);
  });
