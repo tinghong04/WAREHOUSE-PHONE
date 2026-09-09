@@ -39,7 +39,7 @@ button{border:1px solid rgba(255,255,255,.15);padding:13px;font-weight:800;backg
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{background:#111;border-radius:18px;padding:14px;text-align:center}
 .stat span{font-size:12px;color:#999}.stat b{display:block;font-size:30px;margin-top:4px}
 .last{font-size:22px;font-weight:800;word-break:break-word}.qty{font-size:18px;font-weight:800;margin-top:8px}
-.actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.full{grid-column:1/-1}
+.actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.full{grid-column:1/-1}#copyOrdersBtn{display:none}.mode-order #copyOrdersBtn{display:block}
 .syncbar{display:flex;justify-content:space-between;gap:10px;align-items:center;background:#151515;border:1px solid #292929;border-radius:14px;padding:10px 12px;margin-bottom:12px}
 .mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:9px}.mode-btn{padding:14px 10px;background:#202024;color:#c8c8cc;border:1px solid #38383d}.mode-btn.active{background:linear-gradient(145deg,#fff,#dcdcdf);color:#111;border-color:#fff}.mode-note{margin-top:10px}.mode-order .photo-option{display:none}.mode-order #excelBtn,.mode-order #copyTaskBtn{display:none}.photo-option{display:flex;align-items:center;justify-content:space-between;gap:12px}.photo-option b{display:block;font-size:15px}.photo-option .muted{margin-top:3px}.switch{position:relative;width:52px;height:30px;flex:none}.switch input{opacity:0;width:0;height:0}.slider{position:absolute;inset:0;background:#343438;border:1px solid #505055;border-radius:999px;transition:.2s}.slider:before{content:"";position:absolute;width:22px;height:22px;left:3px;top:3px;background:#fff;border-radius:50%;box-shadow:0 2px 5px rgba(0,0,0,.35);transition:.2s}.switch input:checked + .slider{background:#1d8d58;border-color:#42b97e}.switch input:checked + .slider:before{transform:translateX(22px)}.photo-controls{position:absolute;left:12px;right:12px;bottom:12px;z-index:5;display:none;padding:11px;background:rgba(10,10,10,.88);border:1px solid rgba(255,255,255,.18);border-radius:15px;backdrop-filter:blur(10px)}.photo-status{margin-bottom:8px;font-size:12px;color:#ddd}.photo-status.ok{color:#83f6b0}.photo-status.err{color:#ffadad}.photo-action{width:100%;background:linear-gradient(145deg,#2f9b65,#17633e);color:#fff;border-color:#52bb82}.syncbar b{font-size:13px}.syncbar span{font-size:12px;color:#aaa}.syncok{color:#7dff9d!important}.syncwarn{color:#ffd27d!important}.syncerr{color:#ff9f9f!important}.busy{opacity:.55;pointer-events:none}
 .row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;padding:11px 0;border-bottom:1px solid #262626}
@@ -163,6 +163,7 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
       <button onclick="undoLast()" data-i18n="undo">撤销上一次</button>
       <button id="excelBtn" class="dark" onclick="exportExcel()" data-i18n="excel">生成 Excel</button>
       <button id="copyTaskBtn" class="dark" onclick="copyCurrentTask()" data-i18n="copy">复制明细</button>
+      <button id="copyOrdersBtn" class="dark" onclick="copyOrderNumbers()">复制本批次物流单号</button>
       <button id="finishBtn" class="red full" onclick="newTask()" data-i18n="newTask">完成并开始新任务</button>
     </div>
   </div>
@@ -348,8 +349,10 @@ const formats=[
 function onScan(code){
  const now=Date.now();
  if(photoPendingCode||now<scanLockedUntil)return;
- if(now-lastAt<900)return;
- if(code===lastDecoded&&now-lastAt<2000)return;
+ const minInterval=currentMode==="count"?250:900;
+ const sameCodeInterval=currentMode==="count"?700:2000;
+ if(now-lastAt<minInterval)return;
+ if(code===lastDecoded&&now-lastAt<sameCodeInterval)return;
  lastDecoded=code;lastAt=now;add(code);
  if(photoMode.checked){
    photoPendingCode=code;
@@ -399,7 +402,7 @@ async function startCamera(){
    await html5QrCode.start(
      {facingMode:"environment"},
      {
-       fps:30,
+       fps:currentMode==="count"?60:30,
        aspectRatio:1.333333,
 
        videoConstraints:{
@@ -537,8 +540,23 @@ function render(){
    qty.addEventListener("change",()=>setQty(s,qty.value));
    qty.addEventListener("blur",()=>setQty(s,qty.value));
    qty.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();qty.blur()}});
-   d.append(a,minus,qty);skuList.appendChild(d);
+   if(currentMode==="order"){
+     const copy=document.createElement("button");copy.className="mini";copy.textContent="复制单号";copy.onclick=()=>copyText(s,"已复制物流单号");
+     d.append(a,copy);
+   }else d.append(a,minus,qty);
+   skuList.appendChild(d);
  });
+}
+function copyText(text,success){
+ const done=()=>alert(success||"已复制");
+ if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(text).then(done).catch(()=>fallbackCopy(text,done));}
+ else fallbackCopy(text,done);
+}
+function copyOrderNumbers(){
+ if(currentMode!=="order")return;
+ const numbers=Object.keys(counts).sort((a,b)=>a.localeCompare(b));
+ if(!numbers.length)return alert("请先扫描物流单号");
+ copyText(numbers.join("\n"),"已复制本批次 "+numbers.length+" 个物流单号");
 }
 function safeName(v){return(v||"").trim().replace(/[\\/:*?"<>|]+/g,"_").replace(/\s+/g,"_").slice(0,40)||"NA"}
 function workbook(){
