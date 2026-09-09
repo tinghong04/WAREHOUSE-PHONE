@@ -375,13 +375,13 @@ const formats=[
 
 function onScan(code){
  const now=Date.now();
- if(photoPendingCode||now<scanLockedUntil)return;
+ if(photoPendingCode||exceptionPhotoArmed||now<scanLockedUntil)return;
  if(currentMode==="count"&&countPurpose==="inbound"){
    if(!inboundBatchNo){inboundBatchNo=code;localStorage.setItem("warehouse_inbound_batch_no",code);lastDecoded=code;lastAt=now;lastCode.textContent="批次："+code;lastQty.textContent="请拍本批次货物";feedback();updateInboundUI();return}
    if(!inboundCountingStarted)return;
  }
- const minInterval=currentMode==="count"?250:900;
- const sameCodeInterval=currentMode==="count"?700:2000;
+ const minInterval=currentMode==="count"?400:900;
+ const sameCodeInterval=currentMode==="count"?1000:2000;
  if(now-lastAt<minInterval)return;
  if(code===lastDecoded&&now-lastAt<sameCodeInterval)return;
  lastDecoded=code;lastAt=now;add(code,currentMode==="count"?scanIncrement:1);
