@@ -81,7 +81,7 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
   contain:layout paint;
 }
 
-#scanPage:not(.reviewing) .syncbar,#scanPage:not(.reviewing) .scan-hint,#scanPage:not(.reviewing) .scan-only{display:none!important}
+#scanPage:not(.reviewing) .syncbar,#scanPage:not(.reviewing) .scan-hint,#scanPage:not(.reviewing) .scan-only,#scanPage:not(.reviewing) .scan-step-action{display:none!important}
 #scanPage:not(.reviewing) .camera-card{margin-top:0;padding:0;overflow:hidden;border-radius:18px}
 #scanPage:not(.reviewing) .camera-status{padding:9px 12px}
 #scanPage:not(.reviewing) .scan-step-action{position:sticky;bottom:10px;z-index:20;margin:12px 0 0;padding:0 2px}
@@ -459,8 +459,7 @@ async function openAppTab(tab){
  }
  if(tab==="camera"){
    if(!employeeName.value.trim()){alert(t("needEmployee"));return openAppTab("info")}
-   if(!scanPage.classList.contains("hidden")&&!scanPage.classList.contains("reviewing")){setActiveTab("camera");return}
-   setupPage.classList.add("hidden");infoPage.classList.add("hidden");reviewArea.classList.add("hidden");scanPage.classList.remove("reviewing");scanPage.classList.remove("hidden");setActiveTab("camera");window.scrollTo(0,0);syncWorkflowStage();await startCamera();return;
+   return openCameraPage();
  }
  if(tab==="data"){if(!Object.keys(counts).length){alert(t("needData"));return}if(scanPage.classList.contains("hidden")){setupPage.classList.add("hidden");infoPage.classList.add("hidden");scanPage.classList.remove("hidden")}if(!scanPage.classList.contains("reviewing"))return goReview();setActiveTab("data");}
 }
@@ -470,12 +469,17 @@ function goInfoPage(){
 function backToModePage(){
  infoPage.classList.add("hidden");setupPage.classList.remove("hidden");setActiveTab("mode");window.scrollTo(0,0);
 }
+async function openCameraPage(){
+ setupPage.classList.add("hidden");infoPage.classList.add("hidden");
+ reviewArea.classList.add("hidden");reviewArea.style.display="";
+ scanPage.classList.remove("reviewing","hidden");setActiveTab("camera");window.scrollTo(0,0);
+ await stopCamera();syncWorkflowStage();await startCamera();
+}
 async function goScanPage(){
  if(!employeeName.value.trim())return alert(t("needEmployee"));
  localStorage.setItem("warehouse_employee_name",employeeName.value.trim());
  localStorage.setItem("warehouse_customer_name",customerName.value.trim());
- infoPage.classList.add("hidden");scanPage.classList.remove("hidden");
- setActiveTab("camera");window.scrollTo(0,0);syncWorkflowStage();await startCamera();
+ await openCameraPage();
 }
 async function backToSetup(){
  await stopCamera();reviewArea.classList.add("hidden");scanPage.classList.remove("reviewing");scanPage.classList.add("hidden");infoPage.classList.remove("hidden");setActiveTab("info");window.scrollTo(0,0);
