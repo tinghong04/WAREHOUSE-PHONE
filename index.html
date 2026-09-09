@@ -186,7 +186,7 @@ const SUPABASE_KEY="sb_publishable_WGmlYFeJDFhyCSteTxQGWQ_3aggl9LK";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
 const photoSb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
 let counts={}, history=[], lastDecoded="", lastAt=0, scanLockedUntil=0;
-let orderPhotos=[], photoUploadCount=0, photoUserId=null, photoPendingCode="";
+let orderPhotos=[], photoUploadCount=0, photoUserId=null, photoPendingCode="", photoLastError="";
 let currentTaskId=localStorage.getItem("warehouse_current_task_id")||uuid();
 localStorage.setItem("warehouse_current_task_id",currentTaskId);
 try{orderPhotos=JSON.parse(localStorage.getItem("warehouse_current_task_photos")||"[]")}catch(e){orderPhotos=[]}
@@ -197,6 +197,7 @@ let countPurpose=localStorage.getItem("warehouse_count_purpose")||"inventory";
 let inboundCountingStarted=localStorage.getItem("warehouse_inbound_counting")==="1";
 let inboundBatchNo=localStorage.getItem("warehouse_inbound_batch_no")||"";
 let inboundBatchPhotoTaken=localStorage.getItem("warehouse_inbound_batch_photo")==="1";
+let inboundPhotoArmed=false;
 
 const I18N={
 zh:{
@@ -484,7 +485,7 @@ function captureOrderPhoto(orderNo){
        orderPhotos.push({order_no:orderNo,storage_path:path,captured_at:new Date().toISOString()});
        localStorage.setItem("warehouse_current_task_photos",JSON.stringify(orderPhotos));
        updatePhotoStatus();saved=true;
-     }catch(e){console.error(e);updatePhotoStatus("error")}
+     }catch(e){console.error(e);photoLastError=e?.message||"照片服务连接失败";updatePhotoStatus("error")}
      finally{photoUploadCount--;resolve(saved)}
    }, "image/jpeg", .86);
  });
@@ -496,17 +497,24 @@ function updateInboundUI(){
  if(!inbound)return;
  captureInboundBtn.style.display="none";startInboundBtn.style.display="none";exceptionInboundBtn.style.display="none";
  if(!inboundBatchNo){inboundStatus.textContent="第 1 步：请扫描入库批次号。";return}
- if(!inboundBatchPhotoTaken){inboundStatus.textContent="批次："+inboundBatchNo+"。第 2 步：拍摄本批次每一袋或每一箱货物。";captureInboundBtn.style.display="block";return}
+ if(!inboundBatchPhotoTaken){inboundPhotoArmed=false;inboundStatus.textContent="批次："+inboundBatchNo+"。第 2 步：点击准备拍照，确认画面后再保存。";captureInboundBtn.textContent="准备拍本批次货物";captureInboundBtn.style.display="block";return}
  if(!inboundCountingStarted){inboundStatus.textContent="批次："+inboundBatchNo+"。照片已保存，第 3 步：开始扫码盘点。";startInboundBtn.style.display="block";return}
  inboundStatus.textContent="批次："+inboundBatchNo+" · 盘点进行中，可随时记录异常。";exceptionInboundBtn.style.display="block";
 }
 async function captureInboundPhoto(){
  if(currentMode!=="count"||countPurpose!=="inbound"||!inboundBatchNo)return;
- captureInboundBtn.disabled=true;inboundStatus.textContent="正在保存本批次货物照片…";
+ if(!inboundPhotoArmed){
+   captureInboundBtn.disabled=true;inboundStatus.textContent="正在准备照片服务…";
+   try{await ensurePhotoUser();}catch(e){photoLastError=e?.message||"匿名照片权限未就绪";}
+   captureInboundBtn.disabled=false;
+   if(photoLastError){inboundStatus.textContent="照片服务未就绪："+photoLastError;return}
+   inboundPhotoArmed=true;captureInboundBtn.textContent="📷 确认画面，拍照保存";inboundStatus.textContent="请确认货物画面清楚，然后点“拍照保存”。";return;
+ }
+ captureInboundBtn.disabled=true;inboundStatus.textContent="正在保存本批次货物照片…";photoLastError="";
  const saved=await captureOrderPhoto("入库照片 · 批次："+inboundBatchNo);
  captureInboundBtn.disabled=false;
- if(saved){inboundBatchPhotoTaken=true;localStorage.setItem("warehouse_inbound_batch_photo","1");updateInboundUI();}
- else{inboundStatus.textContent="拍照保存失败，请确认相机权限和网络后重试。";}
+ if(saved){inboundBatchPhotoTaken=true;inboundPhotoArmed=false;localStorage.setItem("warehouse_inbound_batch_photo","1");updateInboundUI();}
+ else{inboundStatus.textContent="拍照保存失败："+(photoLastError||"请检查相机权限和网络后重试");captureInboundBtn.textContent="📷 再次尝试拍照保存";}
 }
 async function captureInboundException(){
  if(currentMode!=="count"||countPurpose!=="inbound"||!inboundCountingStarted)return;
