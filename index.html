@@ -453,6 +453,13 @@ function setActiveTab(tab){
  document.body.dataset.view=tab;
  document.querySelectorAll(".bottom-tabs [data-tab]").forEach(button=>button.classList.toggle("active",button.dataset.tab===tab));
 }
+let cameraNoticeTimer=null;
+function showCameraNotice(text){
+ if(!camStatus)return;
+ camStatus.textContent=text;camStatus.classList.add("syncwarn");
+ clearTimeout(cameraNoticeTimer);
+ cameraNoticeTimer=setTimeout(()=>{camStatus.classList.remove("syncwarn");if(cameraRunning)camStatus.textContent=t("camReady")},1800);
+}
 async function openAppTab(tab){
  if(tab==="mode"){
    if(!scanPage.classList.contains("hidden"))await stopCamera();
@@ -466,7 +473,7 @@ async function openAppTab(tab){
    if(!employeeName.value.trim()){alert(t("needEmployee"));return openAppTab("info")}
    return openCameraPage();
  }
- if(tab==="data"){if(!Object.keys(counts).length){alert(t("needData"));return}if(scanPage.classList.contains("hidden")){setupPage.classList.add("hidden");infoPage.classList.add("hidden");scanPage.classList.remove("hidden")}if(!scanPage.classList.contains("reviewing"))return goReview();setActiveTab("data");}
+ if(tab==="data"){if(!Object.keys(counts).length){showCameraNotice("还没有扫描数据");return}if(scanPage.classList.contains("hidden")){setupPage.classList.add("hidden");infoPage.classList.add("hidden");scanPage.classList.remove("hidden")}if(!scanPage.classList.contains("reviewing"))return goReview();setActiveTab("data");}
 }
 function goInfoPage(){
  setupPage.classList.add("hidden");infoPage.classList.remove("hidden");setActiveTab("info");window.scrollTo(0,0);
