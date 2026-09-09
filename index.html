@@ -543,7 +543,7 @@ async function captureInboundException(){
  const saved=await captureOrderPhoto("异常照片 · 批次："+inboundBatchNo);
  exceptionInboundBtn.disabled=false;
  if(!saved){inboundStatus.textContent="异常照片失败："+(photoLastError||"请重试");return}
- const note=prompt("填写异常备注：");
+ const note=prompt("填写异常备注（例如：外箱破损、数量不符）：");
  const photo=orderPhotos[orderPhotos.length-1];
  if(photo)photo.order_no="异常："+(note===null||!note.trim()?"未填写备注":note.trim())+" · 批次："+inboundBatchNo;
  localStorage.setItem("warehouse_current_task_photos",JSON.stringify(orderPhotos));
