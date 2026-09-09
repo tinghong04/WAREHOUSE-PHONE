@@ -22,7 +22,7 @@ input,textarea{width:100%;background:#1c1c1e;color:#fff;border:1px solid #333;pa
 textarea{min-height:75px;resize:vertical}
 button{border:1px solid rgba(255,255,255,.15);padding:13px;font-weight:800;background:linear-gradient(145deg,#fff,#d9d9dc);color:#111;box-shadow:0 5px 14px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.8);letter-spacing:.1px}
 .dark{background:linear-gradient(145deg,#3b3b3f,#1b1b1e);color:#fff;border-color:#4a4a50;box-shadow:0 5px 14px rgba(0,0,0,.3),inset 0 1px rgba(255,255,255,.08)}.red{background:linear-gradient(145deg,#7e2727,#3d1114);color:#fff0f0;border-color:#a34343;box-shadow:0 5px 14px rgba(67,0,0,.28),inset 0 1px rgba(255,255,255,.12)}
-#setupPage,#scanPage{min-width:0}.page-start{width:100%;font-size:17px;padding:16px}.scan-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.scan-nav b{font-size:16px}
+#setupPage,#infoPage,#scanPage{min-width:0}.page-start{width:100%;font-size:17px;padding:16px}.scan-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.scan-nav b{font-size:16px}
 .camera-card{padding:0;overflow:hidden}
 .camera-wrap{position:relative;background:#050505;min-height:360px;overflow:hidden}.camera-card.photo-capture-mode .camera-wrap{min-height:360px}
 #reader{width:100%;min-height:360px}
@@ -78,6 +78,7 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
 #scanPage:not(.reviewing) .camera-status{padding:9px 12px}
 #scanPage:not(.reviewing) .scan-step-action{position:sticky;bottom:10px;z-index:20;margin:12px 0 0;padding:0 2px}
 #scanPage:not(.reviewing) .scan-step-action button{min-height:52px;font-size:16px;box-shadow:0 10px 26px rgba(0,0,0,.35)}
+.app-page{min-height:calc(100dvh - 52px);display:flex;flex-direction:column}.app-page.hidden{display:none!important}.page-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;min-height:46px}.page-top b{font-size:17px}.page-footer{margin-top:auto;padding-top:12px}.mode-card{margin-top:auto;margin-bottom:12px}.mode-btn{min-height:116px;font-size:17px;line-height:1.8}.mode-btn:first-letter{font-size:26px}.mode-note{min-height:38px}.app-page:not(#scanPage) .card{margin-bottom:12px}@media(max-height:720px){.app-page{min-height:calc(100dvh - 28px)}.header{padding:12px}.mode-btn{min-height:88px;padding:9px}.mode-note{min-height:24px}.page-start{padding:13px}.grid{gap:7px}input{padding:10px}}
 </style>
 
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=2">
@@ -93,15 +94,18 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
 <body>
 <div class="flash" id="flash"></div>
 <div class="wrap">
-  <div id="setupPage">
+  <div id="setupPage" class="app-page">
   <div class="card header">
     <button class="langbtn" id="langBtn" onclick="toggleLang()">EN</button>
-    <h1 data-i18n="title">📦 仓库 SKU 扫码计数器</h1>
-    <div class="muted" data-i18n="subtitle">二维码 + 一维码 + 手动输入 · 自动统计 · 导出 Excel</div>
+    <h1>仓库助手</h1>
+    <div class="muted">选择本次工作方式</div>
   </div>
+  <div class="card mode-card"><div class="mode-switch"><button id="countModeBtn" class="mode-btn" onclick="setMode('count')">📦<br>点货模式</button><button id="orderModeBtn" class="mode-btn" onclick="setMode('order')">📷<br>扫单模式</button></div><div id="countPurposeCard" class="purpose-switch"><button id="inventoryPurposeBtn" class="purpose-btn" onclick="setCountPurpose('inventory')">库存盘点</button><button id="inboundPurposeBtn" class="purpose-btn" onclick="setCountPurpose('inbound')">货物入库</button></div><div id="modeNote" class="muted mode-note"></div></div>
+  <div class="page-footer"><button class="page-start" onclick="goInfoPage()">下一步：填写资料 →</button></div>
+</div>
 
-  <div class="card"><div class="mode-switch"><button id="countModeBtn" class="mode-btn" onclick="setMode('count')">📦 点货模式</button><button id="orderModeBtn" class="mode-btn" onclick="setMode('order')">📷 扫单模式</button></div><div id="countPurposeCard" class="purpose-switch"><button id="inventoryPurposeBtn" class="purpose-btn" onclick="setCountPurpose('inventory')">库存盘点</button><button id="inboundPurposeBtn" class="purpose-btn" onclick="setCountPurpose('inbound')">货物入库</button></div><div id="modeNote" class="muted mode-note"></div></div>
-
+<div id="infoPage" class="hidden app-page">
+  <div class="page-top"><button class="dark" onclick="backToModePage()">← 选择模式</button><b>任务资料</b><span></span></div>
   <div class="card">
     <div class="grid">
       <div><label data-i18n="employee">员工姓名</label><input id="employeeName" data-ph="employeePh" placeholder="例如：Ah Hong"></div>
@@ -111,13 +115,13 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
     </div>
   </div>
   <div id="photoSetupCard" class="card photo-option">
-    <div><b data-i18n="photoMode">每单拍照</b><div class="muted" data-i18n="photoModeHint">开启后，扫码后手动拍照才可扫下一单</div></div>
+    <div><b data-i18n="photoMode">每单拍照</b><div class="muted">扫完一单后，确认画面再拍照</div></div>
     <label class="switch" aria-label="每单拍照"><input id="photoMode" type="checkbox"><span class="slider"></span></label>
   </div>
-  <div class="card"><button class="page-start" onclick="goScanPage()">进入相机 →</button></div>
-  </div>
+  <div class="page-footer"><button class="page-start" onclick="goScanPage()">进入相机 →</button></div>
+</div>
 
-  <div id="scanPage" class="hidden">
+<div id="scanPage" class="hidden">
   <div class="scan-nav"><button class="dark" onclick="backToSetup()">← 任务资料</button><b id="scanStepTitle">相机</b><span></span></div>
   <div class="syncbar"><div><b id="syncTitle">☁️ 云端同步</b><br><span id="syncStatus">准备中…</span></div><button id="retryBtn" class="dark" style="padding:9px 12px;display:none" onclick="retryPending()">重试</button></div>
 
@@ -254,7 +258,7 @@ employeeCol:"ஊழியர்",dateCol:"தேதி",taskCol:"பணி ப�
 }};
 
 const $=id=>document.getElementById(id);
-const employeeName=$("employeeName"),customerName=$("customerName"),taskDate=$("taskDate"),taskName=$("taskName");
+const employeeName=$("employeeName"),customerName=$("customerName"),taskDate=$("taskDate"),taskName=$("taskName"),infoPage=$("infoPage");
 const manualInput=$("manualInput"),lastCode=$("lastCode"),lastQty=$("lastQty"),totalCount=$("totalCount"),uniqueCount=$("uniqueCount");
 const skuList=$("skuList"),searchInput=$("searchInput"),flash=$("flash"),langBtn=$("langBtn"),camStatus=$("camStatus"),restartBtn=$("restartBtn"),cameraCard=document.querySelector(".camera-card");
 const photoMode=$("photoMode"),photoSetupCard=$("photoSetupCard"),photoStatus=$("photoStatus"),capturePhotoBtn=$("capturePhotoBtn"),photoControls=$("photoControls"),countModeBtn=$("countModeBtn"),orderModeBtn=$("orderModeBtn"),modeNote=$("modeNote");
@@ -433,15 +437,21 @@ async function stopCamera(){
  try{if(html5QrCode)await html5QrCode.clear()}catch(e){}
  html5QrCode=null;
 }
+function goInfoPage(){
+ setupPage.classList.add("hidden");infoPage.classList.remove("hidden");window.scrollTo(0,0);
+}
+function backToModePage(){
+ infoPage.classList.add("hidden");setupPage.classList.remove("hidden");window.scrollTo(0,0);
+}
 async function goScanPage(){
  if(!employeeName.value.trim())return alert(t("needEmployee"));
  localStorage.setItem("warehouse_employee_name",employeeName.value.trim());
  localStorage.setItem("warehouse_customer_name",customerName.value.trim());
- setupPage.classList.add("hidden");scanPage.classList.remove("hidden");
+ infoPage.classList.add("hidden");scanPage.classList.remove("hidden");
  window.scrollTo(0,0);syncWorkflowStage();await startCamera();
 }
 async function backToSetup(){
- await stopCamera();reviewArea.classList.add("hidden");scanPage.classList.remove("reviewing");scanPage.classList.add("hidden");setupPage.classList.remove("hidden");window.scrollTo(0,0);
+ await stopCamera();reviewArea.classList.add("hidden");scanPage.classList.remove("reviewing");scanPage.classList.add("hidden");infoPage.classList.remove("hidden");window.scrollTo(0,0);
 }
 async function goReview(){
  if(photoPendingCode)return alert("请先完成当前单号的拍照");
