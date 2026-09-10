@@ -160,7 +160,7 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
         <div id="photoStatus" class="photo-status"></div>
         <button id="capturePhotoBtn" class="photo-action" onclick="capturePendingOrderPhoto()" data-i18n="photoAction">📷 确认画面清楚，拍照并记录</button>
       </div>
-      <div id="scanQuantityControls" class="scan-qty-controls"><span class="scan-qty-label">每扫一次</span><button id="scanQty1" class="scan-qty-btn" onclick="setScanIncrement(1)">+1</button><button id="scanQty5" class="scan-qty-btn" onclick="setScanIncrement(5)">+5</button><button id="scanQty10" class="scan-qty-btn" onclick="setScanIncrement(10)">+10</button><button id="countExceptionBtn" class="scan-qty-btn" onclick="captureCountException()">异常</button></div>
+      <div id="scanQuantityControls" class="scan-qty-controls"><span class="scan-qty-label">每扫一次</span><button id="scanQty1" class="scan-qty-btn" onclick="setScanIncrement(1)">+1</button><button id="scanQty5" class="scan-qty-btn" onclick="setScanIncrement(5)">+5</button><button id="scanQty10" class="scan-qty-btn" onclick="setScanIncrement(10)">+10</button><button id="countExceptionBtn" class="scan-qty-btn" onclick="captureCountException()">异常</button><button id="countExceptionDoneBtn" class="scan-qty-btn" style="display:none" onclick="finishCountException()">完成</button></div>
       <div id="inboundPanel" class="inbound-panel">
         <b>货物入库</b><div id="inboundStatus" class="muted" style="margin-top:5px">第 1 步：请扫描入库批次号。</div>
         <div class="inbound-actions"><button id="captureInboundBtn" class="dark icon-action camera-icon" style="display:none" onclick="captureInboundPhoto()" aria-label="准备拍本批次货物" title="准备拍本批次货物">📷 拍照</button><button id="cancelInboundBatchBtn" class="dark icon-action cancel-icon" style="display:none" onclick="cancelInboundBatch()" aria-label="取消并重扫批次" title="取消并重扫批次">↺</button><button id="exceptionInboundBtn" class="dark exception-photo-action" style="display:none" onclick="captureInboundException()">异常</button><button id="resumeInboundBtn" class="dark resume-inbound" style="display:none" onclick="resumeInboundScanning()">继续</button><button id="startInboundBtn" class="inbound-start" style="display:none" onclick="finishInboundPhotos()">完成拍照</button></div>
@@ -229,6 +229,8 @@ let inboundCountingStarted=localStorage.getItem("warehouse_inbound_counting")===
 let inboundBatchNo=localStorage.getItem("warehouse_inbound_batch_no")||"";
 let inboundBatchPhotoTaken=localStorage.getItem("warehouse_inbound_batch_photo")==="1";
 let inboundPhotoArmed=false, exceptionPhotoArmed=false, countExceptionArmed=false;
+let exceptionPhotoStartIndex=-1, countExceptionPhotoStartIndex=-1;
+let exceptionPhotoGroupId="", countExceptionPhotoGroupId="";
 let scanIncrement=Number(localStorage.getItem("warehouse_scan_increment")||"1");if(![1,5,10].includes(scanIncrement))scanIncrement=1;
 
 const I18N={
@@ -292,7 +294,7 @@ function applyLang(){
 }
 function toggleLang(){lang=lang==="zh"?"en":(lang==="en"?"ta":"zh");localStorage.setItem("warehouse_lang",lang);applyLang();applyMode()}
 function discardDraftForModeChange(){
- counts={};history=[];orderPhotos=[];photoPendingCode="";photoUploadCount=0;photoLastError="";inboundCountingStarted=false;inboundBatchNo="";inboundBatchPhotoTaken=false;inboundPhotoArmed=false;exceptionPhotoArmed=false;countExceptionArmed=false;lastDecoded="";lastAt=0;scanLockedUntil=0;
+ counts={};history=[];orderPhotos=[];photoPendingCode="";photoUploadCount=0;photoLastError="";inboundCountingStarted=false;inboundBatchNo="";inboundBatchPhotoTaken=false;inboundPhotoArmed=false;exceptionPhotoArmed=false;countExceptionArmed=false;exceptionPhotoStartIndex=-1;countExceptionPhotoStartIndex=-1;exceptionPhotoGroupId="";countExceptionPhotoGroupId="";lastDecoded="";lastAt=0;scanLockedUntil=0;
  localStorage.removeItem("warehouse_current_task_photos");localStorage.removeItem("warehouse_inbound_counting");localStorage.removeItem("warehouse_inbound_batch_no");localStorage.removeItem("warehouse_inbound_batch_photo");
  currentTaskId=uuid();localStorage.setItem("warehouse_current_task_id",currentTaskId);
  if(manualInput)manualInput.value="";reviewArea.classList.add("hidden");scanPage.classList.remove("reviewing");
@@ -630,7 +632,10 @@ function updateInboundUI(){
  if(!inboundBatchNo){inboundStatus.textContent="第 1 步：请扫描入库批次号。";return}
  if(!inboundBatchPhotoTaken){inboundStatus.textContent="批次："+inboundBatchNo+"。第 2 步：可连续拍多张货物照片，拍完再点完成。";captureInboundBtn.title=inboundPhotoArmed?"确认画面，拍照保存":"准备拍本批次货物";captureInboundBtn.setAttribute("aria-label",captureInboundBtn.title);captureInboundBtn.innerHTML=inboundPhotoArmed?"📷 确认拍照":"📷 拍照";captureInboundBtn.style.display="inline-flex";startInboundBtn.style.display="block";startInboundBtn.textContent="完成拍照";cancelInboundBatchBtn.style.display="block";return}
  if(!inboundCountingStarted){inboundStatus.textContent="批次："+inboundBatchNo+"。照片已完成，第 3 步：开始扫码盘点。";startInboundBtn.style.display="block";startInboundBtn.textContent="开始扫码盘点";return}
- inboundStatus.textContent=exceptionPhotoArmed?"异常记录中":"批次："+inboundBatchNo+" · 盘点中";exceptionInboundBtn.classList.toggle("photo-ready",exceptionPhotoArmed);exceptionInboundBtn.textContent=exceptionPhotoArmed?"📷 拍照":"异常";exceptionInboundBtn.style.display="block";if(exceptionPhotoArmed)resumeInboundBtn.style.display="block";
+ const exceptionPhotos=exceptionPhotoArmed&&exceptionPhotoStartIndex>=0?orderPhotos.slice(exceptionPhotoStartIndex):[];
+ inboundStatus.textContent=exceptionPhotoArmed?"异常记录中 · 已拍 "+exceptionPhotos.length+" 张照片":"批次："+inboundBatchNo+" · 盘点中";
+ exceptionInboundBtn.classList.toggle("photo-ready",exceptionPhotoArmed);exceptionInboundBtn.textContent=exceptionPhotoArmed?"📷 拍照":"异常";exceptionInboundBtn.style.display="block";
+ if(exceptionPhotoArmed){resumeInboundBtn.textContent="完成";resumeInboundBtn.style.display="block";}
 }
 async function captureInboundPhoto(){
  if(currentMode!=="count"||countPurpose!=="inbound"||!inboundBatchNo)return;
@@ -655,37 +660,43 @@ async function cancelInboundBatch(){
 }
 async function captureInboundException(){
  if(currentMode!=="count"||countPurpose!=="inbound"||!inboundCountingStarted)return;
- if(!exceptionPhotoArmed){exceptionPhotoArmed=true;updateInboundUI();return}
+ if(!exceptionPhotoArmed){exceptionPhotoArmed=true;exceptionPhotoStartIndex=orderPhotos.length;exceptionPhotoGroupId=uuid();updateInboundUI();return}
  exceptionInboundBtn.disabled=true;inboundStatus.textContent="保存异常照片…";photoLastError="";
- const saved=await captureOrderPhoto("异常照片 · 批次："+inboundBatchNo);
+ const saved=await captureOrderPhoto("异常待备注 · 批次："+inboundBatchNo);
  exceptionInboundBtn.disabled=false;
  if(!saved){inboundStatus.textContent="异常照片失败："+(photoLastError||"请重试");return}
- const note=prompt("填写异常备注（例如：外箱破损、数量不符）：");
- const photo=orderPhotos[orderPhotos.length-1];
- if(photo)photo.order_no="异常："+(note===null||!note.trim()?"未填写备注":note.trim())+" · 批次："+inboundBatchNo;
- localStorage.setItem("warehouse_current_task_photos",JSON.stringify(orderPhotos));
- updateInboundUI();
- try{await restartCamera()}catch(e){}
+ localStorage.setItem("warehouse_current_task_photos",JSON.stringify(orderPhotos));updateInboundUI();
 }
-async function resumeInboundScanning(){
- exceptionPhotoArmed=false;scanLockedUntil=Date.now()+350;lastAt=Date.now();updateInboundUI();
- try{await restartCamera()}catch(e){}
+function finishInboundException(){
+ const photos=exceptionPhotoStartIndex>=0?orderPhotos.slice(exceptionPhotoStartIndex):[];
+ if(photos.length){
+   const note=prompt("填写异常备注（例如：外箱破损、数量不符）：");
+   const label="异常："+(note===null||!note.trim()?"未填写备注":note.trim())+" · 批次："+inboundBatchNo+" · 组："+exceptionPhotoGroupId;
+   photos.forEach(photo=>photo.order_no=label);localStorage.setItem("warehouse_current_task_photos",JSON.stringify(orderPhotos));
+ }
+ exceptionPhotoArmed=false;exceptionPhotoStartIndex=-1;exceptionPhotoGroupId="";scanLockedUntil=Date.now()+500;lastAt=Date.now();updateInboundUI();
 }
+async function resumeInboundScanning(){finishInboundException()}
 async function captureCountException(){
  if(currentMode!=="count"||countPurpose==="inbound")return;
  if(!countExceptionArmed){
-   countExceptionArmed=true;countExceptionBtn.textContent="📷 拍照";countExceptionBtn.classList.add("active");return;
+   countExceptionArmed=true;countExceptionPhotoStartIndex=orderPhotos.length;countExceptionPhotoGroupId=uuid();countExceptionBtn.textContent="📷 拍照";countExceptionBtn.classList.add("active");countExceptionDoneBtn.style.display="inline-block";return;
  }
  countExceptionBtn.disabled=true;photoLastError="";
- const saved=await captureOrderPhoto("异常：点货");
- countExceptionBtn.disabled=false;countExceptionArmed=false;countExceptionBtn.textContent="异常";countExceptionBtn.classList.remove("active");
- if(saved){
+ const saved=await captureOrderPhoto("异常待备注 · 点货");
+ countExceptionBtn.disabled=false;
+ if(!saved)return;
+ localStorage.setItem("warehouse_current_task_photos",JSON.stringify(orderPhotos));
+ countExceptionBtn.textContent="📷 拍照";
+}
+function finishCountException(){
+ const photos=countExceptionPhotoStartIndex>=0?orderPhotos.slice(countExceptionPhotoStartIndex):[];
+ if(photos.length){
    const note=prompt("填写异常备注（例如：外箱破损、数量不符）：");
-   const photo=orderPhotos[orderPhotos.length-1];
-   if(photo)photo.order_no="异常："+(note===null||!note.trim()?"未填写备注":note.trim())+" · 点货";
-   localStorage.setItem("warehouse_current_task_photos",JSON.stringify(orderPhotos));
-   try{await restartCamera()}catch(e){}
+   const label="异常："+(note===null||!note.trim()?"未填写备注":note.trim())+" · 点货 · 组："+countExceptionPhotoGroupId;
+   photos.forEach(photo=>photo.order_no=label);localStorage.setItem("warehouse_current_task_photos",JSON.stringify(orderPhotos));
  }
+ countExceptionArmed=false;countExceptionPhotoStartIndex=-1;countExceptionPhotoGroupId="";countExceptionBtn.textContent="异常";countExceptionBtn.classList.remove("active");countExceptionDoneBtn.style.display="none";scanLockedUntil=Date.now()+500;lastAt=Date.now();
 }
 function finishInboundPhotos(){
  if(inboundBatchPhotoTaken)return startInboundCounting();
@@ -755,7 +766,7 @@ function scheduleRender(){
 }
 function render(){
  const term=(searchInput.value||"").trim().toLowerCase();
- let es=Object.entries(counts).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]));
+ let es=Object.entries(counts).sort((a,b)=>a[0].localeCompare(b[0]));
  totalCount.textContent=es.reduce((s,x)=>s+x[1],0);uniqueCount.textContent=es.length;
  if(term)es=es.filter(([s])=>s.toLowerCase().includes(term));
  skuList.innerHTML="";
