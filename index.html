@@ -113,43 +113,43 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
   <div id="setupPage" class="app-page">
   <div class="card header">
     <button class="langbtn" id="langBtn" onclick="toggleLang()">EN</button>
-    <h1>仓库助手</h1>
-    <div class="muted">选择本次工作方式</div>
+    <h1 data-ui="appName">仓库助手</h1>
+    <div class="muted" data-ui="chooseMode">选择本次工作方式</div>
   </div>
-  <div class="card mode-card"><div class="mode-switch"><button id="countModeBtn" class="mode-btn" onclick="setMode('count')">📦<br>点货模式</button><button id="orderModeBtn" class="mode-btn" onclick="setMode('order')">📷<br>扫单模式</button></div><div id="countPurposeCard" class="purpose-switch"><button id="inventoryPurposeBtn" class="purpose-btn" onclick="setCountPurpose('inventory')">库存盘点</button><button id="inboundPurposeBtn" class="purpose-btn" onclick="setCountPurpose('inbound')">货物入库</button></div><div id="modeNote" class="muted mode-note"></div></div>
+  <div class="card mode-card"><div class="mode-switch"><button id="countModeBtn" class="mode-btn" onclick="setMode('count')">📦<br><span data-ui="countMode">点货模式</span></button><button id="orderModeBtn" class="mode-btn" onclick="setMode('order')">📷<br><span data-ui="orderMode">扫单模式</span></button></div><div id="countPurposeCard" class="purpose-switch"><button id="inventoryPurposeBtn" class="purpose-btn" onclick="setCountPurpose('inventory')" data-ui="inventory">库存盘点</button><button id="inboundPurposeBtn" class="purpose-btn" onclick="setCountPurpose('inbound')" data-ui="inboundChoice">货物入库</button></div><div id="modeNote" class="muted mode-note"></div></div>
 </div>
 
 <div id="infoPage" class="hidden app-page">
-  <div class="page-top"><button class="dark" onclick="backToModePage()">← 选择模式</button><b>任务资料</b><span></span></div>
+  <div class="page-top"><button class="dark" onclick="backToModePage()" data-ui="chooseModeBack">← 选择模式</button><b data-ui="taskDetails">任务资料</b><span></span></div>
   <div class="card">
     <div class="grid">
       <div><label data-i18n="employee">员工姓名</label><input id="employeeName" data-ph="employeePh" placeholder="例如：Ah Hong"></div>
-      <div><label>客户</label><input id="customerName" placeholder="例如：ABC Trading"></div>
+      <div><label data-ui="customer">客户</label><input id="customerName" data-ui-ph="customerPh" placeholder="例如：ABC Trading"></div>
       <div><label data-i18n="date">日期</label><input id="taskDate" type="date" disabled></div>
       <div id="taskNameField"><label data-i18n="taskName">任务名称</label><input id="taskName" data-ph="taskNamePh" placeholder="例如：退货盘点"></div>
     </div>
   </div>
   <div id="photoSetupCard" class="card photo-option">
-    <div><b data-i18n="photoMode">每单拍照</b><div class="muted">扫完一单后，确认画面再拍照</div></div>
+    <div><b data-i18n="photoMode">每单拍照</b><div class="muted" data-ui="photoHint">扫完一单后，确认画面再拍照</div></div>
     <label class="switch" aria-label="每单拍照"><input id="photoMode" type="checkbox"><span class="slider"></span></label>
   </div>
-  <button class="dark page-start" type="button" onclick="resetCurrentTask()">↺ 重置本次任务</button>
+  <button class="dark page-start" type="button" onclick="resetCurrentTask()" data-ui="reset">↺ 重置本次任务</button>
 </div>
 
 <div id="scanPage" class="hidden">
-  <div class="scan-nav"><button class="dark" onclick="backToSetup()">← 任务资料</button><b id="scanStepTitle">相机</b><span></span></div>
+  <div class="scan-nav"><button class="dark" onclick="backToSetup()" data-ui="taskInfo">← 任务资料</button><b id="scanStepTitle">相机</b><span></span></div>
   <div class="syncbar"><div><b id="syncTitle">☁️ 云端同步</b><br><span id="syncStatus">准备中…</span></div><button id="retryBtn" class="dark" style="padding:9px 12px;display:none" onclick="retryPending()">重试</button></div>
 
   <div class="card camera-card">
     <div class="camera-wrap">
       <div id="reader"></div>
-      <button id="manualModeBtn" class="manual-mode-btn" type="button" onclick="toggleManualMode()">⌨ 手动录入</button>
+      <button id="manualModeBtn" class="manual-mode-btn" type="button" onclick="toggleManualMode()" data-ui="manualToggle">⌨ 手动录入</button>
       <div id="manualEntryPanel" class="manual-entry-panel hidden">
-        <b>手动录入</b>
-        <input id="manualInput" inputmode="text" autocomplete="off" placeholder="输入 SKU / 单号">
-        <input id="manualQty" type="number" min="1" step="1" inputmode="numeric" value="1" placeholder="数量">
-        <button type="button" onclick="manualAdd()">加入记录</button>
-        <button class="dark" type="button" onclick="toggleManualMode(false)">← 返回扫码</button>
+        <b data-ui="manualTitle">手动录入</b>
+        <input id="manualInput" inputmode="text" autocomplete="off" data-ui-ph="manualSku" placeholder="输入 SKU / 单号">
+        <input id="manualQty" type="number" min="1" step="1" inputmode="numeric" value="1" data-ui-ph="manualQty" placeholder="数量">
+        <button type="button" onclick="manualAdd()" data-ui="manualAdd">加入记录</button>
+        <button class="dark" type="button" onclick="toggleManualMode(false)" data-ui="backScan">← 返回扫码</button>
       </div>
       <div class="scan-overlay">
         <div class="scan-box">
@@ -160,15 +160,15 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
         <div id="photoStatus" class="photo-status"></div>
         <button id="capturePhotoBtn" class="photo-action" onclick="capturePendingOrderPhoto()" data-i18n="photoAction">📷 确认画面清楚，拍照并记录</button>
       </div>
-      <div id="scanQuantityControls" class="scan-qty-controls"><span class="scan-qty-label">每扫一次</span><button id="scanQty1" class="scan-qty-btn" onclick="setScanIncrement(1)">+1</button><button id="scanQty5" class="scan-qty-btn" onclick="setScanIncrement(5)">+5</button><button id="scanQty10" class="scan-qty-btn" onclick="setScanIncrement(10)">+10</button><button id="countExceptionBtn" class="scan-qty-btn" onclick="captureCountException()">异常</button><button id="countExceptionDoneBtn" class="scan-qty-btn" style="display:none" onclick="finishCountException()">完成</button></div>
+      <div id="scanQuantityControls" class="scan-qty-controls"><span class="scan-qty-label" data-ui="scanOnce">每扫一次</span><button id="scanQty1" class="scan-qty-btn" onclick="setScanIncrement(1)">+1</button><button id="scanQty5" class="scan-qty-btn" onclick="setScanIncrement(5)">+5</button><button id="scanQty10" class="scan-qty-btn" onclick="setScanIncrement(10)">+10</button><button id="countExceptionBtn" class="scan-qty-btn" onclick="captureCountException()" data-ui="exception">异常</button><button id="countExceptionDoneBtn" class="scan-qty-btn" style="display:none" onclick="finishCountException()" data-ui="complete">完成</button></div>
       <div id="inboundPanel" class="inbound-panel">
-        <b>货物入库</b><div id="inboundStatus" class="muted" style="margin-top:5px">第 1 步：请扫描入库批次号。</div>
-        <div class="inbound-actions"><button id="captureInboundBtn" class="dark icon-action camera-icon" style="display:none" onclick="captureInboundPhoto()" aria-label="准备拍本批次货物" title="准备拍本批次货物">📷 拍照</button><button id="cancelInboundBatchBtn" class="dark icon-action cancel-icon" style="display:none" onclick="cancelInboundBatch()" aria-label="取消并重扫批次" title="取消并重扫批次">↺</button><button id="exceptionInboundBtn" class="dark exception-photo-action" style="display:none" onclick="captureInboundException()">异常</button><button id="resumeInboundBtn" class="dark resume-inbound" style="display:none" onclick="resumeInboundScanning()">继续</button><button id="startInboundBtn" class="inbound-start" style="display:none" onclick="finishInboundPhotos()">完成拍照</button></div>
+        <b data-ui="inbound">货物入库</b><div id="inboundStatus" class="muted" style="margin-top:5px">第 1 步：请扫描入库批次号。</div>
+        <div class="inbound-actions"><button id="captureInboundBtn" class="dark icon-action camera-icon" style="display:none" onclick="captureInboundPhoto()" aria-label="准备拍本批次货物" title="准备拍本批次货物" data-ui="takePhoto">📷 拍照</button><button id="cancelInboundBatchBtn" class="dark icon-action cancel-icon" style="display:none" onclick="cancelInboundBatch()" aria-label="取消并重扫批次" title="取消并重扫批次">↺</button><button id="exceptionInboundBtn" class="dark exception-photo-action" style="display:none" onclick="captureInboundException()" data-ui="exception">异常</button><button id="resumeInboundBtn" class="dark resume-inbound" style="display:none" onclick="resumeInboundScanning()">继续</button><button id="startInboundBtn" class="inbound-start" style="display:none" onclick="finishInboundPhotos()" data-ui="finishPhotos">完成拍照</button></div>
       </div>
     </div>
     <div class="camera-status">
       <span id="camStatus">正在启动摄像头…</span>
-      <button id="restartBtn" class="dark" onclick="restartCamera()">重新启动摄像头</button>
+      <button id="restartBtn" class="dark" onclick="restartCamera()" data-ui="restart">重新启动摄像头</button>
     </div>
   </div>
 
@@ -176,7 +176,7 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
     白色正方形只是瞄准参考；实际会识别整张相机画面，远一点也能尝试识别。
   </div>
 
-  <div class="scan-step-action"><button onclick="goReview()">查看已扫描 / 完成 →</button></div>
+  <div class="scan-step-action"><button onclick="goReview()" data-ui="viewData">查看已扫描 / 完成 →</button></div>
 
   <div class="card scan-only">
     <div class="muted" data-i18n="lastEntry">刚刚录入</div>
@@ -185,7 +185,7 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
   </div>
 
   <div id="reviewArea" class="hidden">
-  <div class="card review-title"><b>核对本次任务</b><button class="dark" onclick="continueScanning()">← 继续扫码</button></div>
+  <div class="card review-title"><b data-ui="reviewTask">核对本次任务</b><button class="dark" onclick="continueScanning()" data-ui="continueScan">← 继续扫码</button></div>
   <div class="stats">
     <div class="stat"><span data-i18n="total">总数量</span><b id="totalCount">0</b></div>
     <div class="stat"><span data-i18n="unique">SKU 种类</span><b id="uniqueCount">0</b></div>
@@ -196,7 +196,7 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
       <button onclick="undoLast()" data-i18n="undo">撤销上一次</button>
       <button id="excelBtn" class="dark" onclick="exportExcel()" data-i18n="excel">生成 Excel</button>
       <button id="copyTaskBtn" class="dark" onclick="copyCurrentTask()" data-i18n="copy">复制明细</button>
-      <button id="copyOrdersBtn" class="dark" onclick="copyOrderNumbers()">复制本批次物流单号</button>
+      <button id="copyOrdersBtn" class="dark" onclick="copyOrderNumbers()" data-ui="copyOrderBatch">复制本批次物流单号</button>
       <button id="finishBtn" class="red full" onclick="newTask()" data-i18n="newTask">完成并开始新任务</button>
     </div>
   </div>
@@ -208,7 +208,7 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
   </div>
   </div>
   </div>
-  <nav class="bottom-tabs" aria-label="功能导航"><button data-tab="mode" onclick="openAppTab('mode')"><span>◉</span>模式</button><button data-tab="info" onclick="openAppTab('info')"><span>□</span>资料</button><button data-tab="camera" onclick="openAppTab('camera')"><span>⌁</span>相机</button><button data-tab="data" onclick="openAppTab('data')"><span>▦</span>数据</button></nav>
+  <nav class="bottom-tabs" aria-label="功能导航"><button data-tab="mode" onclick="openAppTab('mode')"><span>◉</span><i data-ui="mode">模式</i></button><button data-tab="info" onclick="openAppTab('info')"><span>□</span><i data-ui="info">资料</i></button><button data-tab="camera" onclick="openAppTab('camera')"><span>⌁</span><i data-ui="camera">相机</i></button><button data-tab="data" onclick="openAppTab('data')"><span>▦</span><i data-ui="data">数据</i></button></nav>
 </div>
 
 <script>
@@ -274,6 +274,22 @@ camStarting:"கேமரா தொடங்குகிறது…",camReady:"
 employeeCol:"ஊழியர்",dateCol:"தேதி",taskCol:"பணி பெயர்",contentCol:"பணி விவரம்",batchCol:"தொகுதி எண்",uniqueCol:"SKU வகைகள்",totalCol:"மொத்த எண்ணிக்கை",skuCol:"SKU",qtyCol:"எண்ணிக்கை"
 }};
 
+const UI={
+ zh:{reset:"↺ 重置本次任务",manualToggle:"⌨ 手动录入",manualTitle:"手动录入",manualSku:"输入 SKU / 单号",manualQty:"数量",manualAdd:"加入记录",backScan:"← 返回扫码",scanOnce:"每扫一次",exception:"异常",complete:"完成",inbound:"货物入库",takePhoto:"📷 拍照",restart:"重新启动摄像头",viewData:"查看已扫描 / 完成 →",taskInfo:"← 任务资料",mode:"模式",info:"资料",camera:"相机",data:"数据",customer:"客户",customerPh:"例如：ABC Trading",photoHint:"扫完一单后，确认画面再拍照"},
+ en:{reset:"↺ Reset current task",manualToggle:"⌨ Manual entry",manualTitle:"Manual entry",manualSku:"Enter SKU / order no.",manualQty:"Quantity",manualAdd:"Add record",backScan:"← Back to scan",scanOnce:"Per scan",exception:"Exception",complete:"Done",inbound:"Goods inbound",takePhoto:"📷 Take photo",restart:"Restart camera",viewData:"View scanned / finish →",taskInfo:"← Task details",mode:"Mode",info:"Info",camera:"Camera",data:"Data",customer:"Customer",customerPh:"e.g. ABC Trading",photoHint:"After scanning an order, confirm the view and take a photo."},
+ ta:{reset:"↺ தற்போதைய பணியை மீட்டமை",manualToggle:"⌨ கைமுறை பதிவு",manualTitle:"கைமுறை பதிவு",manualSku:"SKU / ஆர்டர் எண்ணை உள்ளிடவும்",manualQty:"அளவு",manualAdd:"பதிவு சேர்",backScan:"← ஸ்கேனுக்கு திரும்பு",scanOnce:"ஒவ்வொரு ஸ்கேனுக்கும்",exception:"விதிவிலக்கு",complete:"முடி",inbound:"சரக்கு உள்வரவு",takePhoto:"📷 புகைப்படம்",restart:"கேமராவை மீண்டும் தொடங்கு",viewData:"ஸ்கேன் செய்ததைப் பார் / முடி →",taskInfo:"← பணி விவரம்",mode:"முறை",info:"விவரம்",camera:"கேமரா",data:"தரவு",customer:"வாடிக்கையாளர்",customerPh:"உதா: ABC Trading",photoHint:"ஆர்டரை ஸ்கேன் செய்த பின் காட்சியை உறுதி செய்து படம் எடுக்கவும்"}
+};
+Object.assign(UI.zh,{appName:"仓库助手",chooseMode:"选择本次工作方式",countMode:"点货模式",orderMode:"扫单模式",inventory:"库存盘点",chooseModeBack:"← 选择模式",taskDetails:"任务资料",continueScan:"← 继续扫码",reviewTask:"核对本次任务",finishPhotos:"完成拍照",cancel:"取消",startCounting:"开始扫码盘点",modeOrder:"扫单：扫描单号后，确认画面清楚再拍照保存。",modeInbound:"入库：先拍每袋或每箱货物，再开始扫码盘点；异常可随时拍照备注。",modeCount:"库存盘点：扫描 SKU 自动累计数量，可导出 Excel 或复制本批次。",detailsOrder:"单号记录",detailsCount:"SKU 明细",manualOrder:"手动输入单号",manualCount:"手动输入 SKU / 条码内容",stepBatch:"第 2 步：扫描入库批次",stepPhoto:"第 3 步：拍摄到货照片",stepReady:"第 3 步：确认到货照片",stepScan:"第 4 步：扫码记录",stepReview:"第 5 步：核对完成",scanning:"扫码中",inboundFirst:"第 1 步：请扫描入库批次号。"});
+Object.assign(UI.en,{appName:"Warehouse Assistant",chooseMode:"Choose this task type",countMode:"Counting",orderMode:"Order scanning",inventory:"Stock count",chooseModeBack:"← Choose mode",taskDetails:"Task details",continueScan:"← Continue scanning",reviewTask:"Review this task",finishPhotos:"Finish photos",cancel:"Cancel",startCounting:"Start counting",modeOrder:"Orders: scan an order number, then confirm the view and take a photo.",modeInbound:"Inbound: photograph each bag or box first, then scan to count. Record exceptions anytime.",modeCount:"Stock count: scan SKUs to accumulate quantities, then export Excel or copy this batch.",detailsOrder:"Order records",detailsCount:"SKU details",manualOrder:"Manual order entry",manualCount:"Manual SKU / barcode entry",stepBatch:"Step 2: Scan inbound batch",stepPhoto:"Step 3: Photograph received goods",stepReady:"Step 3: Confirm received photos",stepScan:"Step 4: Scan records",stepReview:"Step 5: Review and finish",scanning:"Scanning",inboundFirst:"Step 1: Scan inbound batch number."});
+Object.assign(UI.ta,{appName:"கிடங்கு உதவியாளர்",chooseMode:"இந்தப் பணி முறையைத் தேர்ந்தெடுக்கவும்",countMode:"எண்ணிக்கை முறை",orderMode:"ஆர்டர் ஸ்கேன் முறை",inventory:"சரக்கு கணக்கெடுப்பு",chooseModeBack:"← முறையைத் தேர்ந்தெடு",taskDetails:"பணி விவரம்",continueScan:"← ஸ்கேனைத் தொடரவும்",reviewTask:"இந்தப் பணியைச் சரிபார்க்கவும்",finishPhotos:"புகைப்படங்களை முடி",cancel:"ரத்து",startCounting:"எண்ணத் தொடங்கு",modeOrder:"ஆர்டர்: எண்ணை ஸ்கேன் செய்து காட்சியை உறுதிசெய்து படம் எடுக்கவும்.",modeInbound:"உள்வரவு: முதலில் ஒவ்வொரு பெட்டி அல்லது பையையும் படம் எடுத்து, பின்னர் ஸ்கேன் செய்து எண்ணவும்.",modeCount:"சரக்கு கணக்கெடுப்பு: SKU-ஐ ஸ்கேன் செய்து எண்ணிக்கையைச் சேர்க்கவும்.",detailsOrder:"ஆர்டர் பதிவுகள்",detailsCount:"SKU விவரம்",manualOrder:"கைமுறை ஆர்டர் பதிவு",manualCount:"கைமுறை SKU / பார்கோடு பதிவு",stepBatch:"படி 2: உள்வரவு தொகுதியை ஸ்கேன் செய்க",stepPhoto:"படி 3: வந்த பொருட்களைப் படம் எடுக்கவும்",stepReady:"படி 3: வந்த புகைப்படங்களை உறுதிசெய்க",stepScan:"படி 4: பதிவுகளை ஸ்கேன் செய்க",stepReview:"படி 5: சரிபார்த்து முடிக்கவும்",scanning:"ஸ்கேன் செய்கிறது",inboundFirst:"படி 1: உள்வரவு தொகுதி எண்ணை ஸ்கேன் செய்க."});
+
+Object.assign(UI.zh,{inboundChoice:"货物入库",copyOrderBatch:"复制本批次物流单号",inboundPhotos:"批次：{batch}。第 2 步：可连续拍多张货物照片，拍完再点完成。",inboundReady:"批次：{batch}。照片已完成，第 3 步：开始扫码盘点。",inboundCounting:"批次：{batch} · 盘点中",exceptionRecording:"异常记录中 · 已拍 {n} 张照片",preparingPhoto:"正在准备照片服务…",photoServiceNotReady:"照片服务未就绪：{error}",confirmPhoto:"请确认货物画面清楚，然后点“拍照”保存。",savingInbound:"正在保存本批次货物照片…",photoSaveFailed:"拍照保存失败：{error}",photoConfirm:"📷 确认拍照",photoRetry:"📷 再次拍照"});
+Object.assign(UI.en,{inboundChoice:"Goods inbound",copyOrderBatch:"Copy batch order numbers",inboundPhotos:"Batch: {batch}. Step 2: Take as many goods photos as needed, then finish.",inboundReady:"Batch: {batch}. Photos completed. Step 3: Start counting.",inboundCounting:"Batch: {batch} · Counting",exceptionRecording:"Recording exception · {n} photo(s)",preparingPhoto:"Preparing photo service…",photoServiceNotReady:"Photo service not ready: {error}",confirmPhoto:"Confirm the goods are clear, then tap Take photo.",savingInbound:"Saving goods photo…",photoSaveFailed:"Photo save failed: {error}",photoConfirm:"📷 Confirm photo",photoRetry:"📷 Retry photo"});
+Object.assign(UI.ta,{inboundChoice:"சரக்கு உள்வரவு",copyOrderBatch:"தொகுதி ஆர்டர் எண்களை நகலெடு",inboundPhotos:"தொகுதி: {batch}. படி 2: தேவையான அளவு புகைப்படங்கள் எடுத்து முடிக்கவும்.",inboundReady:"தொகுதி: {batch}. புகைப்படங்கள் முடிந்தன. படி 3: எண்ணத் தொடங்கவும்.",inboundCounting:"தொகுதி: {batch} · எண்ணப்படுகிறது",exceptionRecording:"விதிவிலக்கு பதிவு · {n} படம்",preparingPhoto:"புகைப்பட சேவை தயார் செய்யப்படுகிறது…",photoServiceNotReady:"புகைப்பட சேவை தயார் இல்லை: {error}",confirmPhoto:"சரக்கு தெளிவாக உள்ளதா உறுதிசெய்து படம் எடுக்கவும்.",savingInbound:"சரக்கு புகைப்படம் சேமிக்கப்படுகிறது…",photoSaveFailed:"படம் சேமிக்க முடியவில்லை: {error}",photoConfirm:"📷 படத்தை உறுதிசெய்",photoRetry:"📷 மீண்டும் முயற்சி"});
+function uf(key,values={}){return Object.entries(values).reduce((text,[name,value])=>text.replaceAll('{'+name+'}',value),u(key))}
+
+function u(key){return (UI[lang]||UI.zh)[key]||UI.zh[key]||key}
+
 const $=id=>document.getElementById(id);
 const employeeName=$("employeeName"),customerName=$("customerName"),taskDate=$("taskDate"),taskName=$("taskName"),infoPage=$("infoPage");
 const manualInput=$("manualInput"),lastCode=$("lastCode"),lastQty=$("lastQty"),totalCount=$("totalCount"),uniqueCount=$("uniqueCount");
@@ -286,6 +302,10 @@ function applyLang(){
  document.documentElement.lang=lang==="zh"?"zh-CN":(lang==="en"?"en":"ta");
  document.querySelectorAll("[data-i18n]").forEach(el=>el.textContent=t(el.dataset.i18n));
  document.querySelectorAll("[data-ph]").forEach(el=>el.placeholder=t(el.dataset.ph));
+ document.querySelectorAll("[data-ui]").forEach(el=>el.textContent=u(el.dataset.ui));
+ document.querySelectorAll("[data-ui-ph]").forEach(el=>el.placeholder=u(el.dataset.uiPh));
+ if(!countExceptionArmed)countExceptionBtn.textContent=u("exception");
+ countExceptionDoneBtn.textContent=u("complete");
  langBtn.textContent=lang==="zh"?"EN":(lang==="en"?"தமிழ்":"中");
  syncTitle.textContent=t("syncTitle");retryBtn.textContent=t("retry");updateSyncStatus();
  camStatus.textContent=cameraRunning?t("camReady"):t("camStarting");
@@ -323,9 +343,9 @@ function applyMode(){
  photoSetupCard.style.display=order?"flex":"none";
  countPurposeCard.style.display=order?"none":"grid";
  inventoryPurposeBtn.classList.toggle("active",countPurpose==="inventory");inboundPurposeBtn.classList.toggle("active",inbound);
- modeNote.textContent=order?"扫单：扫描单号后，确认画面清楚再拍照保存。":inbound?"入库：先拍每袋或每箱货物，再开始扫码盘点；异常可随时拍照备注。":"库存盘点：扫描 SKU 自动累计数量，可导出 Excel 或复制本批次。";
- document.querySelector("[data-i18n='details']").textContent=order?"单号记录":"SKU 明细";
- document.querySelector("[data-i18n='manualLabel']").textContent=order?"手动输入单号":"手动输入 SKU / 条码内容";
+ modeNote.textContent=order?u("modeOrder"):inbound?u("modeInbound"):u("modeCount");
+ document.querySelector("[data-i18n='details']").textContent=order?u("detailsOrder"):u("detailsCount");
+ document.querySelector("[data-i18n='manualLabel']").textContent=order?u("manualOrder"):u("manualCount");
  updateInboundUI();
 }
 
@@ -611,8 +631,8 @@ function inboundPhotoCount(){return orderPhotos.filter(x=>String(x.order_no).sta
 function setWorkflowStage(stage){
  if(!scanPage)return;
  scanPage.dataset.stage=stage;
- const labels={batch:"第 2 步：扫描入库批次", "inbound-photo":"第 3 步：拍摄到货照片", "inbound-ready":"第 3 步：确认到货照片", scan:"第 4 步：扫码记录", review:"第 5 步：核对完成"};
- if(scanStepTitle)scanStepTitle.textContent=labels[stage]||"扫码中";
+ const labels={batch:u("stepBatch"), "inbound-photo":u("stepPhoto"), "inbound-ready":u("stepReady"), scan:u("stepScan"), review:u("stepReview")};
+ if(scanStepTitle)scanStepTitle.textContent=labels[stage]||u("scanning");
  const order=["setup","batch","photos","scan","review"];
  const activeMap={batch:"batch","inbound-photo":"photos","inbound-ready":"photos",scan:"scan",review:"review"};
  const active=activeMap[stage]||"scan";const at=order.indexOf(active);
@@ -629,28 +649,28 @@ function updateInboundUI(){
  const inbound=currentMode==="count"&&countPurpose==="inbound";
  if(!inbound)return;
  captureInboundBtn.style.display="none";startInboundBtn.style.display="none";exceptionInboundBtn.style.display="none";resumeInboundBtn.style.display="none";cancelInboundBatchBtn.style.display="none";
- if(!inboundBatchNo){inboundStatus.textContent="第 1 步：请扫描入库批次号。";return}
- if(!inboundBatchPhotoTaken){inboundStatus.textContent="批次："+inboundBatchNo+"。第 2 步：可连续拍多张货物照片，拍完再点完成。";captureInboundBtn.title=inboundPhotoArmed?"确认画面，拍照保存":"准备拍本批次货物";captureInboundBtn.setAttribute("aria-label",captureInboundBtn.title);captureInboundBtn.innerHTML=inboundPhotoArmed?"📷 确认拍照":"📷 拍照";captureInboundBtn.style.display="inline-flex";startInboundBtn.style.display="block";startInboundBtn.textContent="完成拍照";cancelInboundBatchBtn.style.display="block";return}
- if(!inboundCountingStarted){inboundStatus.textContent="批次："+inboundBatchNo+"。照片已完成，第 3 步：开始扫码盘点。";startInboundBtn.style.display="block";startInboundBtn.textContent="开始扫码盘点";return}
+ if(!inboundBatchNo){inboundStatus.textContent=u("inboundFirst");return}
+ if(!inboundBatchPhotoTaken){inboundStatus.textContent=uf("inboundPhotos",{batch:inboundBatchNo});captureInboundBtn.title=inboundPhotoArmed?u("photoConfirm"):u("takePhoto");captureInboundBtn.setAttribute("aria-label",captureInboundBtn.title);captureInboundBtn.innerHTML=inboundPhotoArmed?u("photoConfirm"):u("takePhoto");captureInboundBtn.style.display="inline-flex";startInboundBtn.style.display="block";startInboundBtn.textContent=u("finishPhotos");cancelInboundBatchBtn.style.display="block";return}
+ if(!inboundCountingStarted){inboundStatus.textContent=uf("inboundReady",{batch:inboundBatchNo});startInboundBtn.style.display="block";startInboundBtn.textContent=u("startCounting");return}
  const exceptionPhotos=exceptionPhotoArmed&&exceptionPhotoStartIndex>=0?orderPhotos.slice(exceptionPhotoStartIndex):[];
- inboundStatus.textContent=exceptionPhotoArmed?"异常记录中 · 已拍 "+exceptionPhotos.length+" 张照片":"批次："+inboundBatchNo+" · 盘点中";
- exceptionInboundBtn.classList.toggle("photo-ready",exceptionPhotoArmed);exceptionInboundBtn.textContent=exceptionPhotoArmed?"📷 拍照":"异常";exceptionInboundBtn.style.display="block";
- if(exceptionPhotoArmed){resumeInboundBtn.textContent="完成";resumeInboundBtn.style.display="block";}
+ inboundStatus.textContent=exceptionPhotoArmed?uf("exceptionRecording",{n:exceptionPhotos.length}):uf("inboundCounting",{batch:inboundBatchNo});
+ exceptionInboundBtn.classList.toggle("photo-ready",exceptionPhotoArmed);exceptionInboundBtn.textContent=exceptionPhotoArmed?u("takePhoto"):u("exception");exceptionInboundBtn.style.display="block";
+ if(exceptionPhotoArmed){resumeInboundBtn.textContent=u("complete");resumeInboundBtn.style.display="block";}
 }
 async function captureInboundPhoto(){
  if(currentMode!=="count"||countPurpose!=="inbound"||!inboundBatchNo)return;
  if(!inboundPhotoArmed){
-   photoLastError="";captureInboundBtn.disabled=true;inboundStatus.textContent="正在准备照片服务…";
+   photoLastError="";captureInboundBtn.disabled=true;inboundStatus.textContent=u("preparingPhoto");
    try{await ensurePhotoUser();}catch(e){photoLastError=e?.message||"匿名照片权限未就绪";}
    captureInboundBtn.disabled=false;
-   if(photoLastError){inboundStatus.textContent="照片服务未就绪："+photoLastError;return}
-   inboundPhotoArmed=true;captureInboundBtn.title="确认画面，拍照保存";captureInboundBtn.setAttribute("aria-label",captureInboundBtn.title);captureInboundBtn.innerHTML="📷 确认拍照";inboundStatus.textContent="请确认货物画面清楚，然后点“拍照”保存。";return;
+   if(photoLastError){inboundStatus.textContent=uf("photoServiceNotReady",{error:photoLastError});return}
+   inboundPhotoArmed=true;captureInboundBtn.title=u("photoConfirm");captureInboundBtn.setAttribute("aria-label",captureInboundBtn.title);captureInboundBtn.innerHTML=u("photoConfirm");inboundStatus.textContent=u("confirmPhoto");return;
  }
- captureInboundBtn.disabled=true;inboundStatus.textContent="正在保存本批次货物照片…";photoLastError="";
+ captureInboundBtn.disabled=true;inboundStatus.textContent=u("savingInbound");photoLastError="";
  const saved=await captureOrderPhoto("入库照片 · 批次："+inboundBatchNo);
  captureInboundBtn.disabled=false;
  if(saved){inboundPhotoArmed=false;updateInboundUI();}
- else{inboundStatus.textContent="拍照保存失败："+(photoLastError||"请检查相机权限和网络后重试");captureInboundBtn.title="再次尝试拍照保存";captureInboundBtn.setAttribute("aria-label",captureInboundBtn.title);captureInboundBtn.innerHTML="📷 再次拍照";}
+ else{inboundStatus.textContent=uf("photoSaveFailed",{error:photoLastError||""});captureInboundBtn.title=u("photoRetry");captureInboundBtn.setAttribute("aria-label",captureInboundBtn.title);captureInboundBtn.innerHTML=u("photoRetry");}
 }
 async function cancelInboundBatch(){
  inboundBatchNo="";inboundPhotoArmed=false;inboundBatchPhotoTaken=false;lastDecoded="";lastAt=0;
