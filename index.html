@@ -222,6 +222,7 @@ let currentTaskId=localStorage.getItem("warehouse_current_task_id")||uuid();
 localStorage.setItem("warehouse_current_task_id",currentTaskId);
 try{orderPhotos=JSON.parse(localStorage.getItem("warehouse_current_task_photos")||"[]")}catch(e){orderPhotos=[]}
 let audioCtx=null, html5QrCode=null, cameraRunning=false, currentTrack=null;
+let screenWakeLock=null,wakeIdleTimer=null;
 let lang=localStorage.getItem("warehouse_lang")||"zh";
 let currentMode=localStorage.getItem("warehouse_task_mode")||"count";
 let countPurpose=localStorage.getItem("warehouse_count_purpose")||"inventory";
@@ -454,12 +455,16 @@ const formats=[
  Html5QrcodeSupportedFormats.EAN_8,Html5QrcodeSupportedFormats.ITF,Html5QrcodeSupportedFormats.UPC_A,
  Html5QrcodeSupportedFormats.UPC_E
 ];
+function activeScanFormats(){
+ // During the first inbound step, looking only for a QR batch code is much faster and more reliable.
+ return currentMode==="count"&&countPurpose==="inbound"&&!inboundBatchNo?[Html5QrcodeSupportedFormats.QR_CODE]:formats;
+}
 
 function onScan(code){
  const now=Date.now();
  if(photoPendingCode||exceptionPhotoArmed||countExceptionArmed||now<scanLockedUntil)return;
  if(currentMode==="count"&&countPurpose==="inbound"){
-   if(!inboundBatchNo){inboundBatchNo=code;localStorage.setItem("warehouse_inbound_batch_no",code);lastDecoded=code;lastAt=now;lastCode.textContent="批次："+code;lastQty.textContent="请拍本批次货物";feedback();updateInboundUI();syncWorkflowStage();return}
+   if(!inboundBatchNo){inboundBatchNo=code;localStorage.setItem("warehouse_inbound_batch_no",code);lastDecoded=code;lastAt=now;lastCode.textContent="批次："+code;lastQty.textContent="请拍本批次货物";feedback();updateInboundUI();syncWorkflowStage();setTimeout(()=>restartCamera(),0);return}
    if(!inboundCountingStarted)return;
  }
  const minInterval=currentMode==="count"?400:900;
@@ -493,6 +498,7 @@ async function enhanceCamera(){
 async function stopCamera(){
  try{if(html5QrCode&&cameraRunning)await html5QrCode.stop()}catch(e){}
  cameraRunning=false;
+ releaseScreenWakeLock();
  try{if(html5QrCode)await html5QrCode.clear()}catch(e){}
  html5QrCode=null;
 }
@@ -554,32 +560,48 @@ async function continueScanning(){
 async function startCamera(){
  restartBtn.style.display="none";camStatus.textContent=t("camStarting");
  try{
-   if(!html5QrCode)html5QrCode=new Html5Qrcode("reader",{formatsToSupport:formats,useBarCodeDetectorIfSupported:true,verbose:false});
+   if(!html5QrCode)html5QrCode=new Html5Qrcode("reader",{formatsToSupport:activeScanFormats(),useBarCodeDetectorIfSupported:true,verbose:false});
    await html5QrCode.start(
-     {facingMode:"environment"},
+     {facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1440},aspectRatio:{ideal:1.333334}},
      {
-       // A moderate scan rate gives the decoder enough time for blurry or small labels.
-       fps:currentMode==="count"?18:12,
-       aspectRatio:1.777778,
-       disableFlip:false,
-       videoConstraints:{
-         facingMode:{ideal:"environment"},
-         width:{ideal:1920},
-         height:{ideal:1080},
-         aspectRatio:{ideal:1.777778}
-       }
+       // Balanced for a fast response without starving the decoder on small or slightly blurry QR codes.
+       fps:currentMode==="count"?24:18,
+       aspectRatio:1.333334,
+       disableFlip:false
        // No qrbox: every frame is decoded, including codes outside the guide box.
      },
      onScan,
      ()=>{}
    );
    cameraRunning=true;
+   keepScreenAwake();
    camStatus.textContent=t("camReady");
    setTimeout(enhanceCamera,500);
  }catch(err){
    cameraRunning=false;camStatus.textContent=t("camError");restartBtn.style.display="inline-block";
  }
 }
+async function keepScreenAwake(){
+ if(!cameraRunning||document.visibilityState!=="visible"||!navigator.wakeLock)return;
+ try{
+   if(!screenWakeLock){
+     screenWakeLock=await navigator.wakeLock.request("screen");
+     screenWakeLock.addEventListener("release",()=>{screenWakeLock=null});
+   }
+   clearTimeout(wakeIdleTimer);
+   wakeIdleTimer=setTimeout(releaseScreenWakeLock,30*60*1000);
+ }catch(e){}
+}
+async function releaseScreenWakeLock(){
+ clearTimeout(wakeIdleTimer);wakeIdleTimer=null;
+ try{if(screenWakeLock)await screenWakeLock.release()}catch(e){}
+ screenWakeLock=null;
+}
+function noteActivity(){if(cameraRunning)keepScreenAwake()}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&cameraRunning)keepScreenAwake();});
+document.addEventListener("pointerdown",noteActivity,{passive:true});
+document.addEventListener("keydown",noteActivity);
+
 async function restartCamera(){
  try{
    if(html5QrCode && cameraRunning){await html5QrCode.stop()}
@@ -686,16 +708,17 @@ async function captureInboundException(){
  if(!saved){inboundStatus.textContent="异常照片失败："+(photoLastError||"请重试");return}
  localStorage.setItem("warehouse_current_task_photos",JSON.stringify(orderPhotos));updateInboundUI();
 }
-function finishInboundException(){
+async function finishInboundException(){
  const photos=exceptionPhotoStartIndex>=0?orderPhotos.slice(exceptionPhotoStartIndex):[];
  if(photos.length){
    const note=prompt("填写异常备注（例如：外箱破损、数量不符）：");
    const label="异常："+(note===null||!note.trim()?"未填写备注":note.trim())+" · 批次："+inboundBatchNo+" · 组："+exceptionPhotoGroupId;
    photos.forEach(photo=>photo.order_no=label);localStorage.setItem("warehouse_current_task_photos",JSON.stringify(orderPhotos));
  }
- exceptionPhotoArmed=false;exceptionPhotoStartIndex=-1;exceptionPhotoGroupId="";scanLockedUntil=Date.now()+500;lastAt=Date.now();updateInboundUI();
+ exceptionPhotoArmed=false;exceptionPhotoStartIndex=-1;exceptionPhotoGroupId="";scanLockedUntil=Date.now()+700;lastAt=Date.now();updateInboundUI();
+ await restartCamera();
 }
-async function resumeInboundScanning(){finishInboundException()}
+async function resumeInboundScanning(){await finishInboundException()}
 async function captureCountException(){
  if(currentMode!=="count"||countPurpose==="inbound")return;
  if(!countExceptionArmed){
@@ -708,14 +731,15 @@ async function captureCountException(){
  localStorage.setItem("warehouse_current_task_photos",JSON.stringify(orderPhotos));
  countExceptionBtn.textContent="📷 拍照";
 }
-function finishCountException(){
+async function finishCountException(){
  const photos=countExceptionPhotoStartIndex>=0?orderPhotos.slice(countExceptionPhotoStartIndex):[];
  if(photos.length){
    const note=prompt("填写异常备注（例如：外箱破损、数量不符）：");
    const label="异常："+(note===null||!note.trim()?"未填写备注":note.trim())+" · 点货 · 组："+countExceptionPhotoGroupId;
    photos.forEach(photo=>photo.order_no=label);localStorage.setItem("warehouse_current_task_photos",JSON.stringify(orderPhotos));
  }
- countExceptionArmed=false;countExceptionPhotoStartIndex=-1;countExceptionPhotoGroupId="";countExceptionBtn.textContent="异常";countExceptionBtn.classList.remove("active");countExceptionDoneBtn.style.display="none";scanLockedUntil=Date.now()+500;lastAt=Date.now();
+ countExceptionArmed=false;countExceptionPhotoStartIndex=-1;countExceptionPhotoGroupId="";countExceptionBtn.textContent="异常";countExceptionBtn.classList.remove("active");countExceptionDoneBtn.style.display="none";scanLockedUntil=Date.now()+700;lastAt=Date.now();
+ await restartCamera();
 }
 function finishInboundPhotos(){
  if(inboundBatchPhotoTaken)return startInboundCounting();
