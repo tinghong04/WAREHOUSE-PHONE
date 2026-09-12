@@ -559,27 +559,38 @@ async function continueScanning(){
 }
 async function startCamera(){
  restartBtn.style.display="none";camStatus.textContent=t("camStarting");
- try{
-   if(!html5QrCode)html5QrCode=new Html5Qrcode("reader",{formatsToSupport:activeScanFormats(),useBarCodeDetectorIfSupported:true,verbose:false});
-   await html5QrCode.start(
-     {facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1440},aspectRatio:{ideal:1.333334}},
-     {
-       // Balanced for a fast response without starving the decoder on small or slightly blurry QR codes.
-       fps:currentMode==="count"?24:18,
-       aspectRatio:1.333334,
-       disableFlip:false
-       // No qrbox: every frame is decoded, including codes outside the guide box.
-     },
-     onScan,
-     ()=>{}
-   );
-   cameraRunning=true;
-   keepScreenAwake();
-   camStatus.textContent=t("camReady");
-   setTimeout(enhanceCamera,500);
- }catch(err){
-   cameraRunning=false;camStatus.textContent=t("camError");restartBtn.style.display="inline-block";
+ const onDecoded=onScan, onDecodeError=()=>{};
+ async function releaseFailedScanner(){
+   try{if(html5QrCode&&cameraRunning)await html5QrCode.stop()}catch(e){}
+   cameraRunning=false;
+   try{if(html5QrCode)await html5QrCode.clear()}catch(e){}
+   html5QrCode=null;
  }
+ async function launch(cameraConfig,scannerConfig,useBarcodeDetector){
+   html5QrCode=new Html5Qrcode("reader",{formatsToSupport:activeScanFormats(),useBarCodeDetectorIfSupported:useBarcodeDetector,verbose:false});
+   await html5QrCode.start(cameraConfig,scannerConfig,onDecoded,onDecodeError);
+ }
+ try{
+   // Keep the camera constraints simple: this is accepted by a wider range of phone cameras.
+   await launch({facingMode:{ideal:"environment"}},{fps:currentMode==="count"?20:16,disableFlip:false},true);
+ }catch(primaryError){
+   console.warn("Primary camera start failed; retrying in compatibility mode.",primaryError);
+   await releaseFailedScanner();
+   await new Promise(resolve=>setTimeout(resolve,220));
+   try{
+     // Some mobile browsers reject advanced scanner options. Retry automatically with their safest mode.
+     await launch({facingMode:"environment"},{fps:10,disableFlip:false},false);
+   }catch(fallbackError){
+     console.error("Camera compatibility retry failed.",fallbackError);
+     await releaseFailedScanner();
+     camStatus.textContent=t("camError");restartBtn.style.display="inline-block";
+     return;
+   }
+ }
+ cameraRunning=true;
+ keepScreenAwake();
+ camStatus.textContent=t("camReady");
+ setTimeout(enhanceCamera,500);
 }
 async function keepScreenAwake(){
  if(!cameraRunning||document.visibilityState!=="visible"||!navigator.wakeLock)return;
