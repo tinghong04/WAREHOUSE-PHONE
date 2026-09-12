@@ -492,9 +492,7 @@ function onScan(code){
  const now=Date.now();
  code=String(code||"").trim().replace(/[\u0000-\u001f\u007f]/g,"");
  if(code.length<2||photoPendingCode||exceptionPhotoArmed||countExceptionArmed||now<scanLockedUntil)return;
- // A real barcode/QR remains visible for multiple camera frames. Require a second identical result
- // before committing it, which filters the occasional one-frame garbled decode.
- if(code!==scanCandidate||now-scanCandidateAt>850){scanCandidate=code;scanCandidateAt=now;return}
+ // Record immediately: warehouse scanning must not require the operator to hold each code still.
  scanCandidate="";scanCandidateAt=0;
  if(currentMode==="count"&&countPurpose==="inbound"){
    if(!inboundBatchNo){inboundBatchNo=code;localStorage.setItem("warehouse_inbound_batch_no",code);lastDecoded=code;lastAt=now;lastCode.textContent="批次："+code;lastQty.textContent="请拍本批次货物";feedback();updateInboundUI();syncWorkflowStage();return}
