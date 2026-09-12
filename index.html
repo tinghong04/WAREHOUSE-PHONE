@@ -865,7 +865,7 @@ async function finishInboundPhotos(){
 }
 function startInboundCounting(){
  if(!inboundBatchPhotoTaken)return alert("请先完成本批次货物拍照");
- inboundCountingStarted=true;localStorage.setItem("warehouse_inbound_counting","1");updateInboundUI();feedback();manualInput.focus();
+ inboundCountingStarted=true;localStorage.setItem("warehouse_inbound_counting","1");updateInboundUI();manualInput.focus();
 }
 async function capturePendingOrderPhoto(){
  if(!photoPendingCode)return;
@@ -987,6 +987,7 @@ function getCountScanQuantity(sku){
  const size=Math.max(0,parseInt(boxSizes[sku],10)||0);
  if(size)return size;
  if(!(sku in counts))counts[sku]=0;
+ warningBeep();
  scheduleRender();
  openAppTab("data").then(()=>{
    const field=[...document.querySelectorAll(".boxedit")].find(input=>input.closest(".row")?.firstChild?.textContent===sku);
