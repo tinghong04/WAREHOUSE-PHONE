@@ -223,6 +223,7 @@ let currentTaskId=localStorage.getItem("warehouse_current_task_id")||uuid();
 localStorage.setItem("warehouse_current_task_id",currentTaskId);
 try{orderPhotos=JSON.parse(localStorage.getItem("warehouse_current_task_photos")||"[]")}catch(e){orderPhotos=[]}
 let audioCtx=null, html5QrCode=null, cameraRunning=false, currentTrack=null;
+let nativeDetector=null,nativeDetectorRunning=false,nativeDetectorTimer=null;
 let screenWakeLock=null,wakeIdleTimer=null;
 let lang=localStorage.getItem("warehouse_lang")||"zh";
 let currentMode=localStorage.getItem("warehouse_task_mode")||"count";
@@ -483,6 +484,35 @@ function onScan(code){
  }
 }
 
+async function startNativeDetector(){
+ stopNativeDetector();
+ if(!("BarcodeDetector" in window))return;
+ try{
+   const requested=["qr_code","code_128","code_39","code_93","codabar","ean_13","ean_8","itf","upc_a","upc_e"];
+   const supported=typeof BarcodeDetector.getSupportedFormats==="function"?await BarcodeDetector.getSupportedFormats():requested;
+   const available=requested.filter(format=>supported.includes(format));
+   if(!available.length)return;
+   nativeDetector=new BarcodeDetector({formats:available});
+ }catch(e){nativeDetector=null;return}
+ nativeDetectorRunning=true;
+ const detect=async()=>{
+   if(!nativeDetectorRunning||!cameraRunning||!nativeDetector)return;
+   const video=document.querySelector("#reader video");
+   try{
+     if(video&&video.readyState>=2){
+       const found=await nativeDetector.detect(video);
+       for(const item of found){if(item.rawValue)onScan(item.rawValue)}
+     }
+   }catch(e){}
+   nativeDetectorTimer=setTimeout(detect,85);
+ };
+ detect();
+}
+function stopNativeDetector(){
+ nativeDetectorRunning=false;nativeDetector=null;
+ clearTimeout(nativeDetectorTimer);nativeDetectorTimer=null;
+}
+
 async function enhanceCamera(){
  try{
    const video=document.querySelector("#reader video");
@@ -493,6 +523,7 @@ async function enhanceCamera(){
    if(caps.focusMode && caps.focusMode.includes("continuous"))advanced.focusMode="continuous";
    if(caps.exposureMode && caps.exposureMode.includes("continuous"))advanced.exposureMode="continuous";
    if(caps.whiteBalanceMode && caps.whiteBalanceMode.includes("continuous"))advanced.whiteBalanceMode="continuous";
+   if(caps.resizeMode && caps.resizeMode.includes("none"))advanced.resizeMode="none";
    // Keep the native 1× field of view; it gives the camera room to focus on close labels.
    if(Object.keys(advanced).length)await currentTrack.applyConstraints({advanced:[advanced]});
    video.setAttribute("playsinline","");video.setAttribute("autoplay","");
@@ -500,6 +531,7 @@ async function enhanceCamera(){
 }
 
 async function stopCamera(){
+ stopNativeDetector();
  try{if(html5QrCode&&cameraRunning)await html5QrCode.stop()}catch(e){}
  cameraRunning=false;
  releaseScreenWakeLock();
@@ -594,7 +626,8 @@ async function startCamera(){
  cameraRunning=true;
  keepScreenAwake();
  camStatus.textContent=t("camReady");
- setTimeout(enhanceCamera,500);
+ setTimeout(enhanceCamera,300);
+ startNativeDetector();
 }
 async function keepScreenAwake(){
  if(!cameraRunning||document.visibilityState!=="visible"||!navigator.wakeLock)return;
@@ -618,6 +651,7 @@ document.addEventListener("pointerdown",noteActivity,{passive:true});
 document.addEventListener("keydown",noteActivity);
 
 async function restartCamera(){
+ stopNativeDetector();
  try{
    if(html5QrCode && cameraRunning){await html5QrCode.stop()}
  }catch(e){}
