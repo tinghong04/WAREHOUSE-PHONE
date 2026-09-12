@@ -216,7 +216,7 @@ const SUPABASE_URL="https://brqurxainlsteygsqfcu.supabase.co";
 const SUPABASE_KEY="sb_publishable_WGmlYFeJDFhyCSteTxQGWQ_3aggl9LK";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
 const photoSb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
-let counts={}, history=[], lastDecoded="", lastAt=0, scanLockedUntil=0;
+let counts={}, history=[], lastDecoded="", lastAt=0, scanLockedUntil=0, scanCandidate="", scanCandidateAt=0;
 let countByBox=localStorage.getItem("warehouse_count_by_box")==="1";
 let boxSizes={};try{boxSizes=JSON.parse(localStorage.getItem("warehouse_current_box_sizes")||"{}")}catch(e){boxSizes={}}
 let orderPhotos=[], photoUploadCount=0, photoUserId=null, photoPendingCode="", photoLastError="", photoPreviewTimer=null;
@@ -225,7 +225,7 @@ localStorage.setItem("warehouse_current_task_id",currentTaskId);
 try{orderPhotos=JSON.parse(localStorage.getItem("warehouse_current_task_photos")||"[]")}catch(e){orderPhotos=[]}
 let audioCtx=null, html5QrCode=null, cameraRunning=false, currentTrack=null;
 let nativeDetector=null,nativeDetectorRunning=false,nativeDetectorTimer=null;
-let screenWakeLock=null,wakeIdleTimer=null;
+let screenWakeLock=null,wakeIdleTimer=null,recoverCameraTimer=null,cameraInterrupted=false;
 let lang=localStorage.getItem("warehouse_lang")||"zh";
 let currentMode=localStorage.getItem("warehouse_task_mode")||"count";
 let countPurpose=localStorage.getItem("warehouse_count_purpose")||"inventory";
@@ -412,19 +412,19 @@ function warningBeep(){
 function beep(){
  playWithAudio(()=>{
    const now=audioCtx.currentTime;
-   const o=audioCtx.createOscillator(),g=audioCtx.createGain();
-   o.type="square";o.frequency.setValueAtTime(1350,now);
-   g.gain.setValueAtTime(0.0001,now);
-   g.gain.exponentialRampToValueAtTime(.34,now+.005);
-   g.gain.exponentialRampToValueAtTime(.0001,now+.14);
-   o.connect(g);g.connect(audioCtx.destination);o.start(now);o.stop(now+.15);
+   [1450,1840].forEach((hz,index)=>{
+     const at=now+index*.075,o=audioCtx.createOscillator(),g=audioCtx.createGain();
+     o.type="square";o.frequency.setValueAtTime(hz,at);
+     g.gain.setValueAtTime(.0001,at);g.gain.exponentialRampToValueAtTime(.48,at+.004);g.gain.exponentialRampToValueAtTime(.0001,at+.075);
+     o.connect(g);g.connect(audioCtx.destination);o.start(at);o.stop(at+.085);
+   });
  });
 }
 function feedback(){
  noteActivity();
  beep();
- // iPhone Safari does not support navigator.vibrate; Android/compatible browsers will vibrate.
- try{if(navigator.vibrate)navigator.vibrate(80)}catch(e){}
+ // Strong, recognisable scan feedback. iPhone may ignore vibration, but Android/PDA will vibrate.
+ try{if(navigator.vibrate)navigator.vibrate([70,35,105])}catch(e){}
  requestAnimationFrame(()=>{
    flash.classList.add("on");
    setTimeout(()=>requestAnimationFrame(()=>flash.classList.remove("on")),120);
@@ -490,7 +490,12 @@ function activeScanFormats(){
 
 function onScan(code){
  const now=Date.now();
- if(photoPendingCode||exceptionPhotoArmed||countExceptionArmed||now<scanLockedUntil)return;
+ code=String(code||"").trim().replace(/[\u0000-\u001f\u007f]/g,"");
+ if(code.length<2||photoPendingCode||exceptionPhotoArmed||countExceptionArmed||now<scanLockedUntil)return;
+ // A real barcode/QR remains visible for multiple camera frames. Require a second identical result
+ // before committing it, which filters the occasional one-frame garbled decode.
+ if(code!==scanCandidate||now-scanCandidateAt>850){scanCandidate=code;scanCandidateAt=now;return}
+ scanCandidate="";scanCandidateAt=0;
  if(currentMode==="count"&&countPurpose==="inbound"){
    if(!inboundBatchNo){inboundBatchNo=code;localStorage.setItem("warehouse_inbound_batch_no",code);lastDecoded=code;lastAt=now;lastCode.textContent="批次："+code;lastQty.textContent="请拍本批次货物";feedback();updateInboundUI();syncWorkflowStage();return}
    if(!inboundCountingStarted)return;
@@ -688,7 +693,30 @@ async function releaseScreenWakeLock(){
  screenWakeLock=null;
 }
 function noteActivity(){if(cameraRunning)keepScreenAwake()}
-document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"){unlockAudio();if(cameraRunning)keepScreenAwake();}});
+function canRecoverCamera(){
+ return document.visibilityState==="visible"&&cameraInterrupted&&scanPage&&!scanPage.classList.contains("hidden")&&!scanPage.classList.contains("reviewing")&&manualEntryPanel?.classList.contains("hidden");
+}
+function scheduleCameraRecovery(){
+ if(!canRecoverCamera())return;
+ clearTimeout(recoverCameraTimer);
+ recoverCameraTimer=setTimeout(async()=>{
+   if(!canRecoverCamera())return;
+   cameraInterrupted=false;scanCandidate="";scanCandidateAt=0;
+   await restartCamera();
+   unlockAudio();keepScreenAwake();
+   showCameraNotice("相机和声音已恢复");
+ },450);
+}
+document.addEventListener("visibilitychange",()=>{
+ if(document.visibilityState==="hidden"){
+   cameraInterrupted=cameraRunning;releaseScreenWakeLock();return;
+ }
+ unlockAudio();
+ if(cameraInterrupted)scheduleCameraRecovery();else if(cameraRunning)keepScreenAwake();
+});
+window.addEventListener("blur",()=>{if(cameraRunning)cameraInterrupted=true});
+window.addEventListener("focus",()=>{unlockAudio();scheduleCameraRecovery()});
+window.addEventListener("pageshow",()=>{unlockAudio();scheduleCameraRecovery()});
 document.addEventListener("pointerdown",noteActivity,{passive:true});
 document.addEventListener("touchstart",noteActivity,{passive:true});
 document.addEventListener("touchmove",noteActivity,{passive:true});
