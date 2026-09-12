@@ -455,7 +455,12 @@ async function resetCurrentTask(){
 }
 
 // Prioritise the formats actually used in warehouse work. Fewer decoder passes give QR and linear barcodes clearer, faster recognition.
-const formats=["QR_CODE","CODE_128","CODE_39","CODE_93","CODABAR","EAN_13","EAN_8","ITF","UPC_A","UPC_E"].map(name=>Html5QrcodeSupportedFormats[name]).filter(Boolean);
+const formats=[
+ Html5QrcodeSupportedFormats.QR_CODE,Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.CODE_39,
+ Html5QrcodeSupportedFormats.CODE_93,Html5QrcodeSupportedFormats.CODABAR,Html5QrcodeSupportedFormats.EAN_13,
+ Html5QrcodeSupportedFormats.EAN_8,Html5QrcodeSupportedFormats.ITF,Html5QrcodeSupportedFormats.UPC_A,
+ Html5QrcodeSupportedFormats.UPC_E
+];
 function activeScanFormats(){
  // Always accept both QR and common barcode formats, including the inbound batch step.
  return formats;
@@ -607,15 +612,31 @@ async function startCamera(){
    await html5QrCode.start(cameraConfig,scannerConfig,onDecoded,onDecodeError);
  }
  try{
-   // Keep the camera constraints simple: this is accepted by a wider range of phone cameras.
-   await launch({facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}},{fps:currentMode==="count"?16:14,disableFlip:false},true);
+   // Html5Qrcode forwards videoConstraints to getUserMedia. Keeping them here prevents a low-resolution default stream.
+   await launch(
+     {facingMode:"environment"},
+     {
+       fps:12,
+       disableFlip:false,
+       videoConstraints:{
+         facingMode:{ideal:"environment"},
+         width:{ideal:1920},
+         height:{ideal:1080}
+       }
+     },
+     true
+   );
  }catch(primaryError){
    console.warn("Primary camera start failed; retrying in compatibility mode.",primaryError);
    await releaseFailedScanner();
    await new Promise(resolve=>setTimeout(resolve,220));
    try{
      // Some mobile browsers reject advanced scanner options. Retry automatically with their safest mode.
-     await launch({facingMode:"environment"},{fps:12,disableFlip:false},false);
+     await launch(
+       {facingMode:"environment"},
+       {fps:10,disableFlip:false,videoConstraints:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}}},
+       false
+     );
    }catch(fallbackError){
      console.error("Camera compatibility retry failed.",fallbackError);
      await releaseFailedScanner();
