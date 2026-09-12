@@ -453,7 +453,8 @@ async function resetCurrentTask(){
  setActiveTab("info");
 }
 
-const formats=["QR_CODE","CODE_128","CODE_39","CODE_93","CODABAR","EAN_13","EAN_8","ITF","UPC_A","UPC_E","DATA_MATRIX","PDF_417","AZTEC","RSS_14","RSS_EXPANDED"].map(name=>Html5QrcodeSupportedFormats[name]).filter(Boolean);
+// Prioritise the formats actually used in warehouse work. Fewer decoder passes give QR and linear barcodes clearer, faster recognition.
+const formats=["QR_CODE","CODE_128","CODE_39","CODE_93","CODABAR","EAN_13","EAN_8","ITF","UPC_A","UPC_E"].map(name=>Html5QrcodeSupportedFormats[name]).filter(Boolean);
 function activeScanFormats(){
  // Always accept both QR and common barcode formats, including the inbound batch step.
  return formats;
@@ -490,10 +491,11 @@ async function enhanceCamera(){
    const caps=currentTrack.getCapabilities?currentTrack.getCapabilities():{};
    const advanced={};
    if(caps.focusMode && caps.focusMode.includes("continuous"))advanced.focusMode="continuous";
-   // Keep the native 1× field of view. Forced zoom made close and wide labels harder to decode.
-   if(Object.keys(advanced).length){
-      await currentTrack.applyConstraints({advanced:[advanced]});
-   }
+   if(caps.exposureMode && caps.exposureMode.includes("continuous"))advanced.exposureMode="continuous";
+   if(caps.whiteBalanceMode && caps.whiteBalanceMode.includes("continuous"))advanced.whiteBalanceMode="continuous";
+   // Keep the native 1× field of view; it gives the camera room to focus on close labels.
+   if(Object.keys(advanced).length)await currentTrack.applyConstraints({advanced:[advanced]});
+   video.setAttribute("playsinline","");video.setAttribute("autoplay","");
  }catch(e){}
 }
 
@@ -574,7 +576,7 @@ async function startCamera(){
  }
  try{
    // Keep the camera constraints simple: this is accepted by a wider range of phone cameras.
-   await launch({facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}},{fps:currentMode==="count"?24:18,disableFlip:false},true);
+   await launch({facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}},{fps:currentMode==="count"?16:14,disableFlip:false},true);
  }catch(primaryError){
    console.warn("Primary camera start failed; retrying in compatibility mode.",primaryError);
    await releaseFailedScanner();
