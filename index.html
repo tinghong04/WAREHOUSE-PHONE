@@ -345,7 +345,6 @@ function setCountPurpose(purpose){
 function applyMode(){
  const order=currentMode==="order", inbound=currentMode==="count"&&countPurpose==="inbound";
  document.body.classList.toggle("mode-order",order);document.body.classList.toggle("mode-inbound",inbound);
- photoMode.checked=order;
  countModeBtn.classList.toggle("active",!order);orderModeBtn.classList.toggle("active",order);
  photoSetupCard.style.display=order?"flex":"none";
  countPurposeCard.style.display=order?"none":"grid";
@@ -1038,7 +1037,7 @@ function workbook(){
  const meta=[[t("employeeCol"),employeeName.value.trim()],[t("dateCol"),taskDate.value],[t("taskCol"),taskName.value.trim()],
  [t("uniqueCol"),es.length],[t("totalCol"),total]];
  const ws1=XLSX.utils.aoa_to_sheet(meta);ws1["!cols"]=[{wch:16},{wch:42}];
- const ws2=XLSX.utils.aoa_to_sheet([[t("skuCol"),u("perBox"),t("qtyCol")],...es.sort((a,b)=>a[0].localeCompare(b[0])).map(([sku,qty])=>[sku,boxSizes[sku]||"",qty])]);ws2["!cols"]=[{wch:42},{wch:16},{wch:10}];
+ const ws2=XLSX.utils.aoa_to_sheet([[t("skuCol"),u("perBox"),"箱数",t("qtyCol")],...es.sort((a,b)=>a[0].localeCompare(b[0])).map(([sku,qty])=>{const perBox=Math.max(0,parseInt(boxSizes[sku],10)||0);return[sku,perBox||"",perBox?(qty/perBox):"",qty]})]);ws2["!cols"]=[{wch:42},{wch:16},{wch:12},{wch:10}];
  XLSX.utils.book_append_sheet(wb,ws1,lang==="zh"?"任务资料":(lang==="en"?"Task Info":"பணி தகவல்"));
  XLSX.utils.book_append_sheet(wb,ws2,lang==="zh"?"SKU明细":(lang==="en"?"SKU Details":"SKU விவரம்"));
  return wb;
@@ -1091,9 +1090,14 @@ function pendingTasks(){
 function savePending(arr){localStorage.setItem("warehouse_pending_tasks",JSON.stringify(arr));updateSyncStatus()}
 function makeTaskPayload(){
  const entries=Object.entries(counts);
+ const type=currentMode==="count"&&countPurpose==="inbound"?"inbound":currentMode;
+ const boxDetails=currentMode==="count"&&countByBox?Object.fromEntries(entries.map(([sku,qty])=>{
+   const perBox=Math.max(0,parseInt(boxSizes[sku],10)||0);
+   return [sku,{per_box:perBox,boxes:perBox?qty/perBox:0,total:qty}];
+ })):null;
  return {
    id:uuid(),
-   task_date:taskDate.value,employee_name:employeeName.value.trim(),customer_name:customerName.value.trim()||null,task_name:(currentMode==="count"&&countPurpose==="inbound"?"":taskName.value.trim()),task_content:(currentMode==="count"&&countPurpose==="inbound"?"inbound":currentMode),batch_no:(currentMode==="count"&&countPurpose==="inbound"?inboundBatchNo:null),
+   task_date:taskDate.value,employee_name:employeeName.value.trim(),customer_name:customerName.value.trim()||null,task_name:(type==="inbound"?"":taskName.value.trim()),task_content:JSON.stringify({type,box_mode:!!boxDetails,box_details:boxDetails,photo_mode:currentMode==="order"&&photoMode.checked}),batch_no:(type==="inbound"?inboundBatchNo:null),
    total_qty:entries.reduce((s,x)=>s+x[1],0),sku_types:entries.length,device_id:deviceId(),
    items:entries.map(([sku,qty])=>({sku,qty})),
    order_photos:orderPhotos.slice()
