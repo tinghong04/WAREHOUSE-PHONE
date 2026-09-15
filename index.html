@@ -1042,7 +1042,7 @@ function workbook(){
  const meta=[[t("employeeCol"),employeeName.value.trim()],[t("dateCol"),taskDate.value],[t("taskCol"),taskName.value.trim()],
  [t("uniqueCol"),es.length],[t("totalCol"),total]];
  const ws1=XLSX.utils.aoa_to_sheet(meta);ws1["!cols"]=[{wch:16},{wch:42}];
- const ws2=XLSX.utils.aoa_to_sheet([[t("skuCol"),u("perBox"),"箱数",t("qtyCol")],...es.sort((a,b)=>a[0].localeCompare(b[0])).map(([sku,qty])=>{const perBox=Math.max(0,parseInt(boxSizes[sku],10)||0);return[sku,perBox||"",perBox?(qty/perBox):"",qty]})]);ws2["!cols"]=[{wch:42},{wch:16},{wch:12},{wch:10}];
+ const ws2=XLSX.utils.aoa_to_sheet([[t("skuCol"),"总箱数",u("perBox"),t("qtyCol")],...es.sort((a,b)=>a[0].localeCompare(b[0])).map(([sku,qty])=>{const perBox=Math.max(0,parseInt(boxSizes[sku],10)||0);return[sku,perBox?(qty/perBox):"",perBox||"",qty]})]);ws2["!cols"]=[{wch:42},{wch:16},{wch:12},{wch:10}];
  XLSX.utils.book_append_sheet(wb,ws1,lang==="zh"?"任务资料":(lang==="en"?"Task Info":"பணி தகவல்"));
  XLSX.utils.book_append_sheet(wb,ws2,lang==="zh"?"SKU明细":(lang==="en"?"SKU Details":"SKU விவரம்"));
  return wb;
