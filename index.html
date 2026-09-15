@@ -959,6 +959,11 @@ function render(){
  es.forEach(([s,q])=>{
    const d=document.createElement("div");d.className="row";
    const a=document.createElement("div");a.textContent=s;
+   if(currentMode==="count"&&countByBox){
+     const perBox=Math.max(0,parseInt(boxSizes[s],10)||0);
+     a.style.whiteSpace="pre-line";
+     a.textContent=s+"\n每箱："+(perBox||"未填写")+"　箱数："+(perBox?(q/perBox):"—")+"　总数："+q;
+   }
    const minus=document.createElement("button");minus.className="mini";minus.textContent="-1";minus.onclick=()=>changeQty(s,-1);
    const qty=document.createElement("input");qty.className="qtyedit";qty.type="number";qty.inputMode="numeric";qty.min="0";qty.step="1";qty.value=q;
    qty.setAttribute("aria-label",t("qtyCol"));
@@ -1141,6 +1146,10 @@ async function retryPending(){
 async function newTask(){
  if(photoUploadCount)return alert(t("photoWaiting"));
  if(!Object.keys(counts).length)return alert(t("needData"));
+ if(currentMode==="count"&&countByBox){
+   const missing=Object.keys(counts).filter(sku=>!(parseInt(boxSizes[sku],10)>0));
+   if(missing.length)return alert("按箱任务必须填写每个 SKU 的每箱数量后才能完成");
+ }
  if(!employeeName.value.trim())return alert(t("needEmployee"));
  if(!confirm(t("confirmNew")))return;
  localStorage.setItem("warehouse_employee_name",employeeName.value.trim());
