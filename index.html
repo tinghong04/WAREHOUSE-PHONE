@@ -171,6 +171,10 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
       <div class="camera-status-actions"><button id="restartBtn" class="dark" onclick="restartCamera()" data-ui="restart">重新启动摄像头</button><button id="manualModeBtn" class="manual-mode-btn" type="button" onclick="toggleManualMode()" data-ui="manualToggle">⌨ 手动录入</button></div>
     </div>
   </div>
+  <div id="shippingPairPanel" class="card hidden" style="margin:0 8px 12px">
+    <b>首次绑定仓库手机</b><div class="muted" style="margin:6px 0 10px">扫码没有反应时，输入电脑版显示的 6 位绑定码即可。</div>
+    <div class="scan-row"><input id="shippingPairInput" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="输入 6 位绑定码"><button type="button" onclick="bindPhoneFromPanel()">确认绑定</button></div>
+  </div>
 
   <div class="muted scan-hint" style="margin:-4px 8px 12px;text-align:center" data-i18n="scanHint">
     白色正方形只是瞄准参考；实际会识别整张相机画面，远一点也能尝试识别。
@@ -350,13 +354,15 @@ function claimShippingPair(code){
  const pair=String(code||"").trim();
  if(!/^\d{6}$/.test(pair)){warningBeep();showCameraNotice("请输入电脑版显示的 6 位绑定码");return}
  fetch("https://cerulean-kringle-7ecd4c.netlify.app/api/shipping-claim",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:pair,deviceId:deviceId()})})
-  .then(r=>r.json()).then(data=>{if(!data.ok){warningBeep();showCameraNotice(data.error||"绑定失败");return}feedback();showCameraNotice("手机绑定成功，现在可直接发货核对")})
+  .then(r=>r.json()).then(data=>{if(!data.ok){warningBeep();showCameraNotice(data.error||"绑定失败");return}$("shippingPairInput").value="";feedback();showCameraNotice("手机绑定成功，现在可直接发货核对")})
   .catch(()=>{warningBeep();showCameraNotice("绑定失败，请重试")});
 }
-function manualPairPhone(){
+function bindPhoneFromPanel(){claimShippingPair($("shippingPairInput").value)}
+async function manualPairPhone(){
  setOrderPurpose("shipping");
- const code=prompt("请输入电脑版显示的 6 位绑定码");
- if(code!==null)claimShippingPair(code);
+ await openCameraPage();
+ $("shippingPairPanel").classList.remove("hidden");
+ $("shippingPairInput").focus();
 }
 function setCountPurpose(purpose){
  if(purpose===countPurpose)return;
@@ -371,6 +377,7 @@ function applyMode(){
  document.body.classList.toggle("mode-order",order);document.body.classList.toggle("mode-inbound",inbound);
  countModeBtn.classList.toggle("active",!order);orderModeBtn.classList.toggle("active",order);
  photoSetupCard.style.display=(order||scanOrder)?"flex":"none";
+ $("shippingPairPanel").classList.toggle("hidden",!(order&&orderPurpose==="shipping"));
  customerField.style.display="block";
  customerName.style.display=order?"none":"block";
  customerNameSelect.style.display=order?"block":"none";
@@ -528,7 +535,7 @@ function onScan(code){
  if(currentMode==="order"&&orderPurpose==="shipping"){
    const pairMatch=code.match(/^warehouse-pair:(\d{6})$/i);
    if(pairMatch){claimShippingPair(pairMatch[1]);return}
-   if(/^\d{6}$/.test(code)&&!activeCustomerName()){claimShippingPair(code);return}
+   if(/^\d{6}$/.test(code)){claimShippingPair(code);return}
    if(!activeCustomerName())return showCameraNotice("请先选择客户");
    if(!shippingExpected){fetch("https://cerulean-kringle-7ecd4c.netlify.app/api/shipping-lookup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId:deviceId(),customer:activeCustomerName(),orderNo:code})}).then(r=>r.json()).then(data=>{if(!data.ok){warningBeep();showCameraNotice(data.error||"没有找到 TK 对照");return}shippingSource=code;shippingExpected=data.trackingNo;showCameraNotice("虾皮 "+code+"，请扫 TK："+data.trackingNo)}).catch(()=>{warningBeep();showCameraNotice("查询失败")});return
    }
