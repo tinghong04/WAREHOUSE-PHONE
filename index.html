@@ -172,6 +172,11 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
     </div>
   </div>
 
+  <div id="shippingTarget" class="card hidden" style="margin:0 8px 12px;border-color:#38d878;background:#10291b">
+    <div class="muted">已扫虾皮单号</div><b id="shippingSourceText" style="display:block;font-size:15px;word-break:break-all;margin:4px 0 10px"></b>
+    <div class="muted">请扫描对应的 TK 物流单号</div><b id="shippingExpectedText" style="display:block;font-size:26px;letter-spacing:1px;color:#8cffad;word-break:break-all;margin-top:5px"></b>
+  </div>
+
   <div class="muted scan-hint" style="margin:-4px 8px 12px;text-align:center" data-i18n="scanHint">
     白色正方形只是瞄准参考；实际会识别整张相机画面，远一点也能尝试识别。
   </div>
@@ -371,6 +376,12 @@ function setCountPurpose(purpose){
  countByBox=false;localStorage.setItem("warehouse_count_by_box","0");
  countPurpose=purpose;localStorage.setItem("warehouse_count_purpose",purpose);applyMode();
 }
+function renderShippingTarget(){
+ const panel=$("shippingTarget");if(!panel)return;
+ const visible=currentMode==="order"&&orderPurpose==="shipping"&&!!shippingExpected;
+ panel.classList.toggle("hidden",!visible);
+ if(visible){$("shippingSourceText").textContent=shippingSource;$("shippingExpectedText").textContent=shippingExpected}
+}
 function applyMode(){
  const order=currentMode==="order", scanOrder=currentMode==="count"&&countPurpose==="scanorder", inbound=currentMode==="count"&&countPurpose==="inbound";
  document.body.classList.toggle("mode-order",order);document.body.classList.toggle("mode-inbound",inbound);
@@ -387,7 +398,7 @@ function applyMode(){
  modeNote.textContent=order?(orderPurpose==="shipping"?"发货：先选择客户；首次使用先扫电脑版生成的绑定二维码，再扫虾皮单号与 TK 单号。":u("modeOrder")):inbound?u("modeInbound"):scanOrder?"扫单号：每个单号只可记录一次，可选择是否拍照。":u("modeCount");
  document.querySelector("[data-i18n='details']").textContent=order?u("detailsOrder"):u("detailsCount");
  document.querySelector("[data-i18n='manualLabel']").textContent=order?u("manualOrder"):u("manualCount");
- updateInboundUI();
+ updateInboundUI();renderShippingTarget();
 }
 
 function todayLocal(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
@@ -536,9 +547,9 @@ function onScan(code){
    if(pairMatch){claimShippingPair(pairMatch[1]);return}
    if(/^\d{6}$/.test(code)){claimShippingPair(code);return}
    if(!activeCustomerName())return showCameraNotice("请先选择客户");
-   if(!shippingExpected){fetch("https://cerulean-kringle-7ecd4c.netlify.app/api/shipping-lookup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId:deviceId(),customer:activeCustomerName(),orderNo:code})}).then(r=>r.json()).then(data=>{if(!data.ok){if(String(data.error||"").includes("尚未绑定")){shippingPhoneBound=false;shippingBindingKnown=true;localStorage.removeItem("warehouse_shipping_bound")}warningBeep();showCameraNotice(data.error||"没有找到 TK 对照");return}shippingSource=code;shippingExpected=data.trackingNo;showCameraNotice("虾皮 "+code+"，请扫 TK："+data.trackingNo)}).catch(()=>{warningBeep();showCameraNotice("查询失败")});return
+   if(!shippingExpected){fetch("https://cerulean-kringle-7ecd4c.netlify.app/api/shipping-lookup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId:deviceId(),customer:activeCustomerName(),orderNo:code})}).then(r=>r.json()).then(data=>{if(!data.ok){if(String(data.error||"").includes("尚未绑定")){shippingPhoneBound=false;shippingBindingKnown=true;localStorage.removeItem("warehouse_shipping_bound")}warningBeep();showCameraNotice(data.error||"没有找到 TK 对照");return}shippingSource=code;shippingExpected=data.trackingNo;renderShippingTarget();showCameraNotice("已显示对应 TK 单号，请继续扫描")}).catch(()=>{warningBeep();showCameraNotice("查询失败")});return
    }
-   if(code===shippingExpected){feedback();showCameraNotice("发货成功："+shippingSource+" → "+code);shippingExpected="";shippingSource="";return}
+   if(code===shippingExpected){feedback();showCameraNotice("发货成功："+shippingSource+" → "+code);shippingExpected="";shippingSource="";renderShippingTarget();return}
    warningBeep();showCameraNotice("TK 不匹配，请扫："+shippingExpected);return
  }
  if(currentMode==="count"&&countPurpose==="scanorder"&&counts[code]){
