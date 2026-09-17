@@ -217,7 +217,7 @@ const SUPABASE_KEY="sb_publishable_WGmlYFeJDFhyCSteTxQGWQ_3aggl9LK";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
 async function loadCustomerOptions(){
  try{
-  const response=await fetch("https://cerulean-kringle-7ecd4c.netlify.app/api/customer-list");
+  const response=await fetch("https://cerulean-kringle-7ecd4c.netlify.app/.netlify/functions/customer-list");
   if(!response.ok)throw new Error();
   const names=await response.json(),list=document.getElementById("customerName"),saved=localStorage.getItem("warehouse_customer_name")||"";
   if(list){list.innerHTML='<option value="">请选择已创建客户</option>'+(names||[]).map(name=>'<option value="'+String(name).replace(/"/g,"&quot;")+'">'+String(name)+'</option>').join("");if(saved&&[...list.options].some(option=>option.value===saved))list.value=saved;}
