@@ -241,7 +241,7 @@ let screenWakeLock=null,wakeIdleTimer=null,recoverCameraTimer=null,cameraInterru
 let lang=localStorage.getItem("warehouse_lang")||"zh";
 let currentMode=localStorage.getItem("warehouse_task_mode")||"count";
 let countPurpose=localStorage.getItem("warehouse_count_purpose")||"inventory";
-let orderPurpose=localStorage.getItem("warehouse_order_purpose")||"arrival", shippingExpected="", shippingSource="", pairingInFlight=false, shippingPhoneBound=localStorage.getItem("warehouse_shipping_bound")==="1";
+let orderPurpose=localStorage.getItem("warehouse_order_purpose")||"arrival", shippingExpected="", shippingSource="", pairingInFlight=false, shippingPhoneBound=localStorage.getItem("warehouse_shipping_bound")==="1", shippingBindingKnown=false;
 let inboundCountingStarted=localStorage.getItem("warehouse_inbound_counting")==="1";
 let inboundBatchNo=localStorage.getItem("warehouse_inbound_batch_no")||"";
 let inboundBatchPhotoTaken=localStorage.getItem("warehouse_inbound_batch_photo")==="1";
@@ -349,7 +349,15 @@ function setMode(mode){
  countByBox=false;localStorage.setItem("warehouse_count_by_box","0");
  currentMode=mode;localStorage.setItem("warehouse_task_mode",mode);applyMode();
 }
-function setOrderPurpose(purpose){orderPurpose=purpose;shippingExpected="";shippingSource="";localStorage.setItem("warehouse_order_purpose",purpose);applyMode()}
+function setOrderPurpose(purpose){orderPurpose=purpose;shippingExpected="";shippingSource="";localStorage.setItem("warehouse_order_purpose",purpose);applyMode();if(purpose==="shipping")refreshShippingBinding()}
+async function refreshShippingBinding(){
+ try{
+  const r=await fetch("https://cerulean-kringle-7ecd4c.netlify.app/api/shipping-device-status",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId:deviceId()})});
+  const data=await r.json();shippingPhoneBound=data.bound===true;shippingBindingKnown=true;
+  if(shippingPhoneBound)localStorage.setItem("warehouse_shipping_bound","1");else localStorage.removeItem("warehouse_shipping_bound");
+ }catch{shippingBindingKnown=true}
+ applyMode();
+}
 function claimShippingPair(code){
  const pair=String(code||"").trim();
  if(shippingPhoneBound){showCameraNotice("这台手机已绑定，可以开始扫虾皮单号");return}
@@ -357,7 +365,7 @@ function claimShippingPair(code){
  if(!/^\d{6}$/.test(pair)){warningBeep();showCameraNotice("请输入电脑版显示的 6 位绑定码");return}
  pairingInFlight=true;scanLockedUntil=Date.now()+4000;showCameraNotice("正在绑定手机，请稍候…");
  fetch("https://cerulean-kringle-7ecd4c.netlify.app/api/shipping-claim",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:pair,deviceId:deviceId()})})
-  .then(r=>r.json()).then(data=>{pairingInFlight=false;if(!data.ok){warningBeep();showCameraNotice(data.error||"绑定失败");return}shippingPhoneBound=true;localStorage.setItem("warehouse_shipping_bound","1");$("shippingPairInput").value="";$("shippingPairPanel").classList.add("hidden");feedback();showCameraNotice("绑定成功，可以开始扫虾皮单号")})
+  .then(r=>r.json()).then(data=>{pairingInFlight=false;if(!data.ok){warningBeep();showCameraNotice(data.error||"绑定失败");return}shippingPhoneBound=true;shippingBindingKnown=true;localStorage.setItem("warehouse_shipping_bound","1");$("shippingPairInput").value="";$("shippingPairPanel").classList.add("hidden");feedback();showCameraNotice("绑定成功，可以开始扫虾皮单号")})
   .catch(()=>{pairingInFlight=false;warningBeep();showCameraNotice("绑定失败，请重试")});
 }
 function bindPhoneFromPanel(){claimShippingPair($("shippingPairInput").value)}
@@ -380,7 +388,7 @@ function applyMode(){
  document.body.classList.toggle("mode-order",order);document.body.classList.toggle("mode-inbound",inbound);
  countModeBtn.classList.toggle("active",!order);orderModeBtn.classList.toggle("active",order);
  photoSetupCard.style.display=(order||scanOrder)?"flex":"none";
- $("shippingPairPanel").classList.toggle("hidden",!(order&&orderPurpose==="shipping"&&!shippingPhoneBound));
+ $("shippingPairPanel").classList.toggle("hidden",!(order&&orderPurpose==="shipping"&&shippingBindingKnown&&!shippingPhoneBound));
  customerField.style.display="block";
  customerName.style.display=order?"none":"block";
  customerNameSelect.style.display=order?"block":"none";
@@ -540,7 +548,7 @@ function onScan(code){
    if(pairMatch){claimShippingPair(pairMatch[1]);return}
    if(/^\d{6}$/.test(code)){claimShippingPair(code);return}
    if(!activeCustomerName())return showCameraNotice("请先选择客户");
-   if(!shippingExpected){fetch("https://cerulean-kringle-7ecd4c.netlify.app/api/shipping-lookup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId:deviceId(),customer:activeCustomerName(),orderNo:code})}).then(r=>r.json()).then(data=>{if(!data.ok){if(String(data.error||"").includes("尚未绑定")){shippingPhoneBound=false;localStorage.removeItem("warehouse_shipping_bound");applyMode()}warningBeep();showCameraNotice(data.error||"没有找到 TK 对照");return}shippingSource=code;shippingExpected=data.trackingNo;showCameraNotice("虾皮 "+code+"，请扫 TK："+data.trackingNo)}).catch(()=>{warningBeep();showCameraNotice("查询失败")});return
+   if(!shippingExpected){fetch("https://cerulean-kringle-7ecd4c.netlify.app/api/shipping-lookup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId:deviceId(),customer:activeCustomerName(),orderNo:code})}).then(r=>r.json()).then(data=>{if(!data.ok){if(String(data.error||"").includes("尚未绑定")){shippingPhoneBound=false;shippingBindingKnown=true;localStorage.removeItem("warehouse_shipping_bound");applyMode()}warningBeep();showCameraNotice(data.error||"没有找到 TK 对照");return}shippingSource=code;shippingExpected=data.trackingNo;showCameraNotice("虾皮 "+code+"，请扫 TK："+data.trackingNo)}).catch(()=>{warningBeep();showCameraNotice("查询失败")});return
    }
    if(code===shippingExpected){feedback();showCameraNotice("发货成功："+shippingSource+" → "+code);shippingExpected="";shippingSource="";return}
    warningBeep();showCameraNotice("TK 不匹配，请扫："+shippingExpected);return
