@@ -116,7 +116,7 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
     <h1 data-ui="appName">仓库助手</h1>
     <div class="muted" data-ui="chooseMode">选择本次工作方式</div>
   </div>
-  <div class="card mode-card"><div class="mode-switch"><button id="countModeBtn" class="mode-btn" onclick="setMode('count')">📦<br><span data-ui="countMode">点货模式</span></button><button id="orderModeBtn" class="mode-btn" onclick="setMode('order')">📷<br><span data-ui="orderMode">扫单模式</span></button></div><div id="countPurposeCard" class="purpose-switch"><button id="inventoryPurposeBtn" class="purpose-btn" onclick="setCountPurpose('inventory')" data-ui="inventory">库存盘点</button><button id="inboundPurposeBtn" class="purpose-btn" onclick="setCountPurpose('inbound')" data-ui="inboundChoice">货物入库</button><button id="scanOrderPurposeBtn" class="purpose-btn" onclick="setCountPurpose('scanorder')">扫单号</button></div><div id="modeNote" class="muted mode-note"></div></div>
+  <div class="card mode-card"><div class="mode-switch"><button id="countModeBtn" class="mode-btn" onclick="setMode('count')">📦<br><span data-ui="countMode">点货模式</span></button><button id="orderModeBtn" class="mode-btn" onclick="setMode('order')">📷<br><span data-ui="orderMode">扫单模式</span></button></div><div id="countPurposeCard" class="purpose-switch"><button id="inventoryPurposeBtn" class="purpose-btn" onclick="setCountPurpose('inventory')" data-ui="inventory">库存盘点</button><button id="inboundPurposeBtn" class="purpose-btn" onclick="setCountPurpose('inbound')" data-ui="inboundChoice">货物入库</button><button id="scanOrderPurposeBtn" class="purpose-btn" onclick="setCountPurpose('scanorder')">扫单号</button></div><div id="orderPurposeCard" class="purpose-switch" style="display:none"><button id="orderArrivalBtn" class="purpose-btn" onclick="setOrderPurpose('arrival')">到货</button><button id="orderShippingBtn" class="purpose-btn" onclick="setOrderPurpose('shipping')">发货</button></div><div id="modeNote" class="muted mode-note"></div></div>
 </div>
 
 <div id="infoPage" class="hidden app-page">
@@ -237,6 +237,7 @@ let screenWakeLock=null,wakeIdleTimer=null,recoverCameraTimer=null,cameraInterru
 let lang=localStorage.getItem("warehouse_lang")||"zh";
 let currentMode=localStorage.getItem("warehouse_task_mode")||"count";
 let countPurpose=localStorage.getItem("warehouse_count_purpose")||"inventory";
+let orderPurpose=localStorage.getItem("warehouse_order_purpose")||"arrival", shippingExpected="", shippingSource="";
 let inboundCountingStarted=localStorage.getItem("warehouse_inbound_counting")==="1";
 let inboundBatchNo=localStorage.getItem("warehouse_inbound_batch_no")||"";
 let inboundBatchPhotoTaken=localStorage.getItem("warehouse_inbound_batch_photo")==="1";
@@ -344,6 +345,7 @@ function setMode(mode){
  countByBox=false;localStorage.setItem("warehouse_count_by_box","0");
  currentMode=mode;localStorage.setItem("warehouse_task_mode",mode);applyMode();
 }
+function setOrderPurpose(purpose){orderPurpose=purpose;shippingExpected="";shippingSource="";localStorage.setItem("warehouse_order_purpose",purpose);applyMode()}
 function setCountPurpose(purpose){
  if(purpose===countPurpose)return;
  const hasDraft=Object.keys(counts).length||orderPhotos.length||inboundBatchNo;
@@ -361,7 +363,8 @@ function applyMode(){
  customerName.style.display=order?"none":"block";
  customerNameSelect.style.display=order?"block":"none";
  boxModeBtn.style.display=scanOrder?"none":"";
- countPurposeCard.style.display=order?"none":"grid";
+ countPurposeCard.style.display=order?"none":"grid";orderPurposeCard.style.display=order?"grid":"none";
+ orderArrivalBtn.classList.toggle("active",orderPurpose==="arrival");orderShippingBtn.classList.toggle("active",orderPurpose==="shipping");
  inventoryPurposeBtn.classList.toggle("active",countPurpose==="inventory");inboundPurposeBtn.classList.toggle("active",inbound);scanOrderPurposeBtn.classList.toggle("active",countPurpose==="scanorder");
  modeNote.textContent=order?u("modeOrder"):inbound?u("modeInbound"):scanOrder?"扫单号：每个单号只可记录一次，可选择是否拍照。":u("modeCount");
  document.querySelector("[data-i18n='details']").textContent=order?u("detailsOrder"):u("detailsCount");
@@ -510,6 +513,13 @@ function onScan(code){
  if(code.length<2||photoPendingCode||exceptionPhotoArmed||countExceptionArmed||now<scanLockedUntil)return;
  // Record immediately: warehouse scanning must not require the operator to hold each code still.
  scanCandidate="";scanCandidateAt=0;
+ if(currentMode==="order"&&orderPurpose==="shipping"){
+   if(!activeCustomerName())return showCameraNotice("请先选择客户");
+   if(!shippingExpected){fetch("https://cerulean-kringle-7ecd4c.netlify.app/api/shipping-lookup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId:deviceId(),customer:activeCustomerName(),orderNo:code})}).then(r=>r.json()).then(data=>{if(!data.ok){warningBeep();showCameraNotice(data.error||"没有找到 TK 对照");return}shippingSource=code;shippingExpected=data.trackingNo;showCameraNotice("虾皮 "+code+"，请扫 TK："+data.trackingNo)}).catch(()=>{warningBeep();showCameraNotice("查询失败")});return
+   }
+   if(code===shippingExpected){feedback();showCameraNotice("发货成功："+shippingSource+" → "+code);shippingExpected="";shippingSource="";return}
+   warningBeep();showCameraNotice("TK 不匹配，请扫："+shippingExpected);return
+ }
  if(currentMode==="count"&&countPurpose==="scanorder"&&counts[code]){
    if(code===lastDecoded&&now-lastAt<2500)return;
    lastDecoded=code;lastAt=now;warningBeep();showCameraNotice("这个单号已经扫描过，未重复记录");return
