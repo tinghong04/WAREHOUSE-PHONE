@@ -124,7 +124,7 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
   <div class="card">
     <div class="grid">
       <div><label data-i18n="employee">员工姓名</label><input id="employeeName" data-ph="employeePh" placeholder="例如：Ah Hong"></div>
-      <div id="customerField"><label data-ui="customer">客户</label><select id="customerName"><option value="">请选择已创建客户</option></select></div>
+      <div id="customerField"><label data-ui="customer">客户</label><input id="customerName" data-ui-ph="customerPh" placeholder="例如：ABC Trading"><select id="customerNameSelect" style="display:none"><option value="">请选择已创建客户</option></select></div>
       <div><label data-i18n="date">日期</label><input id="taskDate" type="date" disabled></div>
       <div id="taskNameField"><label data-i18n="taskName">任务名称</label><input id="taskName" data-ph="taskNamePh" placeholder="例如：退货盘点"></div>
     </div>
@@ -219,7 +219,7 @@ async function loadCustomerOptions(){
  try{
   const response=await fetch("https://cerulean-kringle-7ecd4c.netlify.app/.netlify/functions/customer-list");
   if(!response.ok)throw new Error();
-  const names=await response.json(),list=document.getElementById("customerName"),saved=localStorage.getItem("warehouse_customer_name")||"";
+  const names=await response.json(),list=document.getElementById("customerNameSelect"),saved=localStorage.getItem("warehouse_customer_name")||"";
   if(list){list.innerHTML='<option value="">请选择已创建客户</option>'+(names||[]).map(name=>'<option value="'+String(name).replace(/"/g,"&quot;")+'">'+String(name)+'</option>').join("");if(saved&&[...list.options].some(option=>option.value===saved))list.value=saved;}
  }catch{}
 }
@@ -357,7 +357,9 @@ function applyMode(){
  document.body.classList.toggle("mode-order",order);document.body.classList.toggle("mode-inbound",inbound);
  countModeBtn.classList.toggle("active",!order);orderModeBtn.classList.toggle("active",order);
  photoSetupCard.style.display=(order||scanOrder)?"flex":"none";
- customerField.style.display=order?"block":"none";
+ customerField.style.display="block";
+ customerName.style.display=order?"none":"block";
+ customerNameSelect.style.display=order?"block":"none";
  boxModeBtn.style.display=scanOrder?"none":"";
  countPurposeCard.style.display=order?"none":"grid";
  inventoryPurposeBtn.classList.toggle("active",countPurpose==="inventory");inboundPurposeBtn.classList.toggle("active",inbound);scanOrderPurposeBtn.classList.toggle("active",countPurpose==="scanorder");
@@ -370,9 +372,11 @@ function applyMode(){
 function todayLocal(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
 taskDate.value=todayLocal();
 const savedName=localStorage.getItem("warehouse_employee_name");if(savedName)employeeName.value=savedName;
-const savedCustomer=localStorage.getItem("warehouse_customer_name");if(savedCustomer)customerName.value=savedCustomer;
+const savedCustomer=localStorage.getItem("warehouse_customer_name");if(savedCustomer){customerName.value=savedCustomer;customerNameSelect.value=savedCustomer}
+function activeCustomerName(){return (currentMode==="order"?customerNameSelect.value:customerName.value).trim()}
 employeeName.addEventListener("change",()=>localStorage.setItem("warehouse_employee_name",employeeName.value.trim()));
 customerName.addEventListener("change",()=>localStorage.setItem("warehouse_customer_name",customerName.value.trim()));
+customerNameSelect.addEventListener("change",()=>localStorage.setItem("warehouse_customer_name",customerNameSelect.value.trim()));
 photoMode.checked=localStorage.getItem("warehouse_photo_mode")==="1";
 photoMode.addEventListener("change",()=>{localStorage.setItem("warehouse_photo_mode",photoMode.checked?"1":"0");if(!photoMode.checked&&!photoPendingCode)photoControls.style.display="none";updatePhotoStatus()});
 function updatePhotoStatus(kind){
@@ -622,7 +626,7 @@ async function openCameraPage(){
 async function goScanPage(){
  if(!employeeName.value.trim())return alert(t("needEmployee"));
  localStorage.setItem("warehouse_employee_name",employeeName.value.trim());
- localStorage.setItem("warehouse_customer_name",customerName.value.trim());
+ localStorage.setItem("warehouse_customer_name",activeCustomerName());
  await openCameraPage();
 }
 async function backToSetup(){
@@ -1116,7 +1120,7 @@ function makeTaskPayload(){
  })):null;
  return {
    id:uuid(),
-   task_date:taskDate.value,employee_name:employeeName.value.trim(),customer_name:customerName.value.trim()||null,task_name:(type==="inbound"?"":taskName.value.trim()),task_content:JSON.stringify({type,box_mode:!!boxDetails,box_details:boxDetails,photo_mode:(currentMode==="order"||(currentMode==="count"&&countPurpose==="scanorder"))&&photoMode.checked}),batch_no:(type==="inbound"?inboundBatchNo:null),
+   task_date:taskDate.value,employee_name:employeeName.value.trim(),customer_name:activeCustomerName()||null,task_name:(type==="inbound"?"":taskName.value.trim()),task_content:JSON.stringify({type,box_mode:!!boxDetails,box_details:boxDetails,photo_mode:(currentMode==="order"||(currentMode==="count"&&countPurpose==="scanorder"))&&photoMode.checked}),batch_no:(type==="inbound"?inboundBatchNo:null),
    total_qty:entries.reduce((s,x)=>s+x[1],0),sku_types:entries.length,device_id:deviceId(),
    items:entries.map(([sku,qty])=>({sku,qty})),
    order_photos:orderPhotos.slice()
@@ -1167,7 +1171,7 @@ async function newTask(){
  if(!employeeName.value.trim())return alert(t("needEmployee"));
  if(!confirm(t("confirmNew")))return;
  localStorage.setItem("warehouse_employee_name",employeeName.value.trim());
- localStorage.setItem("warehouse_customer_name",customerName.value.trim());
+ localStorage.setItem("warehouse_customer_name",activeCustomerName());
  const task=makeTaskPayload();
  const arr=pendingTasks();arr.push(task);savePending(arr);
  finishBtn.classList.add("busy");retryBtn.style.display="none";setSync(t("syncing"),"syncwarn");
