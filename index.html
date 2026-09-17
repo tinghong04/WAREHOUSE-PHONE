@@ -116,7 +116,7 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
     <h1 data-ui="appName">仓库助手</h1>
     <div class="muted" data-ui="chooseMode">选择本次工作方式</div>
   </div>
-  <div class="card mode-card"><div class="mode-switch"><button id="countModeBtn" class="mode-btn" onclick="setMode('count')">📦<br><span data-ui="countMode">点货模式</span></button><button id="orderModeBtn" class="mode-btn" onclick="setMode('order')">📷<br><span data-ui="orderMode">扫单模式</span></button></div><div id="countPurposeCard" class="purpose-switch"><button id="inventoryPurposeBtn" class="purpose-btn" onclick="setCountPurpose('inventory')" data-ui="inventory">库存盘点</button><button id="inboundPurposeBtn" class="purpose-btn" onclick="setCountPurpose('inbound')" data-ui="inboundChoice">货物入库</button><button id="scanOrderPurposeBtn" class="purpose-btn" onclick="setCountPurpose('scanorder')">扫单号</button></div><div id="orderPurposeCard" class="purpose-switch" style="display:none"><button id="orderArrivalBtn" class="purpose-btn" onclick="setOrderPurpose('arrival')">到货</button><button id="orderShippingBtn" class="purpose-btn" onclick="setOrderPurpose('shipping')">发货</button></div><div id="modeNote" class="muted mode-note"></div></div>
+  <div class="card mode-card"><div class="mode-switch"><button id="countModeBtn" class="mode-btn" onclick="setMode('count')">📦<br><span data-ui="countMode">点货模式</span></button><button id="orderModeBtn" class="mode-btn" onclick="setMode('order')">📷<br><span data-ui="orderMode">扫单模式</span></button></div><div id="countPurposeCard" class="purpose-switch"><button id="inventoryPurposeBtn" class="purpose-btn" onclick="setCountPurpose('inventory')" data-ui="inventory">库存盘点</button><button id="inboundPurposeBtn" class="purpose-btn" onclick="setCountPurpose('inbound')" data-ui="inboundChoice">货物入库</button><button id="scanOrderPurposeBtn" class="purpose-btn" onclick="setCountPurpose('scanorder')">扫单号</button></div><div id="orderPurposeCard" class="purpose-switch" style="display:none"><button id="orderArrivalBtn" class="purpose-btn" onclick="setOrderPurpose('arrival')">到货</button><button id="orderShippingBtn" class="purpose-btn" onclick="setOrderPurpose('shipping')">发货</button><button class="purpose-btn" onclick="manualPairPhone()">绑定手机</button></div><div id="modeNote" class="muted mode-note"></div></div>
 </div>
 
 <div id="infoPage" class="hidden app-page">
@@ -346,6 +346,18 @@ function setMode(mode){
  currentMode=mode;localStorage.setItem("warehouse_task_mode",mode);applyMode();
 }
 function setOrderPurpose(purpose){orderPurpose=purpose;shippingExpected="";shippingSource="";localStorage.setItem("warehouse_order_purpose",purpose);applyMode()}
+function claimShippingPair(code){
+ const pair=String(code||"").trim();
+ if(!/^\d{6}$/.test(pair)){warningBeep();showCameraNotice("请输入电脑版显示的 6 位绑定码");return}
+ fetch("https://cerulean-kringle-7ecd4c.netlify.app/api/shipping-claim",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:pair,deviceId:deviceId()})})
+  .then(r=>r.json()).then(data=>{if(!data.ok){warningBeep();showCameraNotice(data.error||"绑定失败");return}feedback();showCameraNotice("手机绑定成功，现在可直接发货核对")})
+  .catch(()=>{warningBeep();showCameraNotice("绑定失败，请重试")});
+}
+function manualPairPhone(){
+ setOrderPurpose("shipping");
+ const code=prompt("请输入电脑版显示的 6 位绑定码");
+ if(code!==null)claimShippingPair(code);
+}
 function setCountPurpose(purpose){
  if(purpose===countPurpose)return;
  const hasDraft=Object.keys(counts).length||orderPhotos.length||inboundBatchNo;
@@ -515,12 +527,8 @@ function onScan(code){
  scanCandidate="";scanCandidateAt=0;
  if(currentMode==="order"&&orderPurpose==="shipping"){
    const pairMatch=code.match(/^warehouse-pair:(\d{6})$/i);
-   if(pairMatch){
-     fetch("https://cerulean-kringle-7ecd4c.netlify.app/api/shipping-claim",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:pairMatch[1],deviceId:deviceId()})})
-       .then(r=>r.json()).then(data=>{if(!data.ok){warningBeep();showCameraNotice(data.error||"绑定失败");return}feedback();showCameraNotice("手机绑定成功，现在可直接发货核对")})
-       .catch(()=>{warningBeep();showCameraNotice("绑定失败，请重试")});
-     return;
-   }
+   if(pairMatch){claimShippingPair(pairMatch[1]);return}
+   if(/^\d{6}$/.test(code)&&!activeCustomerName()){claimShippingPair(code);return}
    if(!activeCustomerName())return showCameraNotice("请先选择客户");
    if(!shippingExpected){fetch("https://cerulean-kringle-7ecd4c.netlify.app/api/shipping-lookup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId:deviceId(),customer:activeCustomerName(),orderNo:code})}).then(r=>r.json()).then(data=>{if(!data.ok){warningBeep();showCameraNotice(data.error||"没有找到 TK 对照");return}shippingSource=code;shippingExpected=data.trackingNo;showCameraNotice("虾皮 "+code+"，请扫 TK："+data.trackingNo)}).catch(()=>{warningBeep();showCameraNotice("查询失败")});return
    }
