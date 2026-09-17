@@ -514,7 +514,7 @@ function onScan(code){
  // Record immediately: warehouse scanning must not require the operator to hold each code still.
  scanCandidate="";scanCandidateAt=0;
  if(currentMode==="order"&&orderPurpose==="shipping"){
-   const pairMatch=code.match(/^warehouse-pair:(\\d{6})$/i);
+   const pairMatch=code.match(/^warehouse-pair:(\d{6})$/i);
    if(pairMatch){
      fetch("https://cerulean-kringle-7ecd4c.netlify.app/api/shipping-claim",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:pairMatch[1],deviceId:deviceId()})})
        .then(r=>r.json()).then(data=>{if(!data.ok){warningBeep();showCameraNotice(data.error||"绑定失败");return}feedback();showCameraNotice("手机绑定成功，现在可直接发货核对")})
