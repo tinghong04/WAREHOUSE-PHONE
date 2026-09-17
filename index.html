@@ -116,7 +116,7 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
     <h1 data-ui="appName">仓库助手</h1>
     <div class="muted" data-ui="chooseMode">选择本次工作方式</div>
   </div>
-  <div class="card mode-card"><div class="mode-switch"><button id="countModeBtn" class="mode-btn" onclick="setMode('count')">📦<br><span data-ui="countMode">点货模式</span></button><button id="orderModeBtn" class="mode-btn" onclick="setMode('order')">📷<br><span data-ui="orderMode">扫单模式</span></button></div><div id="countPurposeCard" class="purpose-switch"><button id="inventoryPurposeBtn" class="purpose-btn" onclick="setCountPurpose('inventory')" data-ui="inventory">库存盘点</button><button id="inboundPurposeBtn" class="purpose-btn" onclick="setCountPurpose('inbound')" data-ui="inboundChoice">货物入库</button></div><div id="modeNote" class="muted mode-note"></div></div>
+  <div class="card mode-card"><div class="mode-switch"><button id="countModeBtn" class="mode-btn" onclick="setMode('count')">📦<br><span data-ui="countMode">点货模式</span></button><button id="orderModeBtn" class="mode-btn" onclick="setMode('order')">📷<br><span data-ui="orderMode">扫单模式</span></button></div><div id="countPurposeCard" class="purpose-switch"><button id="inventoryPurposeBtn" class="purpose-btn" onclick="setCountPurpose('inventory')" data-ui="inventory">库存盘点</button><button id="inboundPurposeBtn" class="purpose-btn" onclick="setCountPurpose('inbound')" data-ui="inboundChoice">货物入库</button><button id="scanOrderPurposeBtn" class="purpose-btn" onclick="setCountPurpose('scanorder')">扫单号</button></div><div id="modeNote" class="muted mode-note"></div></div>
 </div>
 
 <div id="infoPage" class="hidden app-page">
@@ -348,8 +348,8 @@ function applyMode(){
  countModeBtn.classList.toggle("active",!order);orderModeBtn.classList.toggle("active",order);
  photoSetupCard.style.display=order?"flex":"none";
  countPurposeCard.style.display=order?"none":"grid";
- inventoryPurposeBtn.classList.toggle("active",countPurpose==="inventory");inboundPurposeBtn.classList.toggle("active",inbound);
- modeNote.textContent=order?u("modeOrder"):inbound?u("modeInbound"):u("modeCount");
+ inventoryPurposeBtn.classList.toggle("active",countPurpose==="inventory");inboundPurposeBtn.classList.toggle("active",inbound);scanOrderPurposeBtn.classList.toggle("active",countPurpose==="scanorder");
+ modeNote.textContent=order?u("modeOrder"):inbound?u("modeInbound"):countPurpose==="scanorder"?"扫单号：每个单号只可记录一次，不拍照。":u("modeCount");
  document.querySelector("[data-i18n='details']").textContent=order?u("detailsOrder"):u("detailsCount");
  document.querySelector("[data-i18n='manualLabel']").textContent=order?u("manualOrder"):u("manualCount");
  updateInboundUI();
@@ -493,6 +493,7 @@ function onScan(code){
  if(code.length<2||photoPendingCode||exceptionPhotoArmed||countExceptionArmed||now<scanLockedUntil)return;
  // Record immediately: warehouse scanning must not require the operator to hold each code still.
  scanCandidate="";scanCandidateAt=0;
+ if(currentMode==="count"&&countPurpose==="scanorder"&&counts[code]){alert("这个单号已经扫描过，未重复记录");return}
  if(currentMode==="count"&&countPurpose==="inbound"){
    if(!inboundBatchNo){inboundBatchNo=code;localStorage.setItem("warehouse_inbound_batch_no",code);lastDecoded=code;lastAt=now;lastCode.textContent="批次："+code;lastQty.textContent="请拍本批次货物";feedback();updateInboundUI();syncWorkflowStage();return}
    if(!inboundCountingStarted)return;
@@ -1095,7 +1096,7 @@ function pendingTasks(){
 function savePending(arr){localStorage.setItem("warehouse_pending_tasks",JSON.stringify(arr));updateSyncStatus()}
 function makeTaskPayload(){
  const entries=Object.entries(counts);
- const type=currentMode==="count"&&countPurpose==="inbound"?"inbound":currentMode;
+ const type=currentMode==="count"&&countPurpose==="inbound"?"inbound":currentMode==="count"&&countPurpose==="scanorder"?"scanorder":currentMode;
  const boxDetails=currentMode==="count"&&countByBox?Object.fromEntries(entries.map(([sku,qty])=>{
    const perBox=Math.max(0,parseInt(boxSizes[sku],10)||0);
    return [sku,{per_box:perBox,boxes:perBox?qty/perBox:0,total:qty}];
