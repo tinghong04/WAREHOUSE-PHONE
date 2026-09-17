@@ -471,7 +471,7 @@ function manualAdd(){
  const qty=Math.max(1,parseInt(manualQty.value,10)||1);
  if(!v)return manualInput.focus();
  if(currentMode==="count"&&countPurpose==="inbound"&&!inboundCountingStarted)return alert("请先拍货物照片，再点“开始扫码盘点”");
- if(currentMode==="count"&&countPurpose==="scanorder"&&counts[v])return alert("这个单号已经扫描过，未重复记录");
+ if(currentMode==="count"&&countPurpose==="scanorder"&&counts[v]){warningBeep();showCameraNotice("这个单号已经扫描过，未重复记录");return;}
  if(currentMode==="count"&&countByBox){
    const perBox=Math.max(0,parseInt(boxSizes[v],10)||0);
    if(!perBox){if(!(v in counts))counts[v]=0;scheduleRender();openAppTab("data");return;}
@@ -512,7 +512,7 @@ function onScan(code){
  scanCandidate="";scanCandidateAt=0;
  if(currentMode==="count"&&countPurpose==="scanorder"&&counts[code]){
    if(code===lastDecoded&&now-lastAt<2500)return;
-   lastDecoded=code;lastAt=now;alert("这个单号已经扫描过，未重复记录");return
+   lastDecoded=code;lastAt=now;warningBeep();showCameraNotice("这个单号已经扫描过，未重复记录");return
  }
  if(currentMode==="count"&&countPurpose==="inbound"){
    if(!inboundBatchNo){inboundBatchNo=code;localStorage.setItem("warehouse_inbound_batch_no",code);lastDecoded=code;lastAt=now;lastCode.textContent="批次："+code;lastQty.textContent="请拍本批次货物";feedback();updateInboundUI();syncWorkflowStage();return}
