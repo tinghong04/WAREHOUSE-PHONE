@@ -225,7 +225,7 @@ async function loadCustomerOptions(){
 }
 const photoSb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
 let counts={}, history=[], lastDecoded="", lastAt=0, scanLockedUntil=0, scanCandidate="", scanCandidateAt=0;
-let countByBox=localStorage.getItem("warehouse_count_by_box")==="1";
+let countByBox=false;localStorage.setItem("warehouse_count_by_box","0");
 let boxSizes={};try{boxSizes=JSON.parse(localStorage.getItem("warehouse_current_box_sizes")||"{}")}catch(e){boxSizes={}}
 let orderPhotos=[], photoUploadCount=0, photoUserId=null, photoPendingCode="", photoLastError="", photoPreviewTimer=null;
 let currentTaskId=localStorage.getItem("warehouse_current_task_id")||uuid();
@@ -341,6 +341,7 @@ function setMode(mode){
  const hasDraft=Object.keys(counts).length||orderPhotos.length||inboundBatchNo;
  if(hasDraft&&!confirm("切换模式会清空当前未完成任务，是否继续？"))return;
  discardDraftForModeChange();
+ countByBox=false;localStorage.setItem("warehouse_count_by_box","0");
  currentMode=mode;localStorage.setItem("warehouse_task_mode",mode);applyMode();
 }
 function setCountPurpose(purpose){
@@ -348,16 +349,18 @@ function setCountPurpose(purpose){
  const hasDraft=Object.keys(counts).length||orderPhotos.length||inboundBatchNo;
  if(hasDraft&&!confirm("切换用途会清空当前未完成任务，是否继续？"))return;
  discardDraftForModeChange();
+ countByBox=false;localStorage.setItem("warehouse_count_by_box","0");
  countPurpose=purpose;localStorage.setItem("warehouse_count_purpose",purpose);applyMode();
 }
 function applyMode(){
- const order=currentMode==="order", inbound=currentMode==="count"&&countPurpose==="inbound";
+ const order=currentMode==="order", scanOrder=currentMode==="count"&&countPurpose==="scanorder", inbound=currentMode==="count"&&countPurpose==="inbound";
  document.body.classList.toggle("mode-order",order);document.body.classList.toggle("mode-inbound",inbound);
  countModeBtn.classList.toggle("active",!order);orderModeBtn.classList.toggle("active",order);
- photoSetupCard.style.display=order?"flex":"none";
+ photoSetupCard.style.display=(order||scanOrder)?"flex":"none";
+ boxModeBtn.style.display=scanOrder?"none":"";
  countPurposeCard.style.display=order?"none":"grid";
  inventoryPurposeBtn.classList.toggle("active",countPurpose==="inventory");inboundPurposeBtn.classList.toggle("active",inbound);scanOrderPurposeBtn.classList.toggle("active",countPurpose==="scanorder");
- modeNote.textContent=order?u("modeOrder"):inbound?u("modeInbound"):countPurpose==="scanorder"?"扫单号：每个单号只可记录一次，不拍照。":u("modeCount");
+ modeNote.textContent=order?u("modeOrder"):inbound?u("modeInbound"):scanOrder?"扫单号：每个单号只可记录一次，可选择是否拍照。":u("modeCount");
  document.querySelector("[data-i18n='details']").textContent=order?u("detailsOrder"):u("detailsCount");
  document.querySelector("[data-i18n='manualLabel']").textContent=order?u("manualOrder"):u("manualCount");
  updateInboundUI();
@@ -463,6 +466,7 @@ function manualAdd(){
  const qty=Math.max(1,parseInt(manualQty.value,10)||1);
  if(!v)return manualInput.focus();
  if(currentMode==="count"&&countPurpose==="inbound"&&!inboundCountingStarted)return alert("请先拍货物照片，再点“开始扫码盘点”");
+ if(currentMode==="count"&&countPurpose==="scanorder"&&counts[v])return alert("这个单号已经扫描过，未重复记录");
  if(currentMode==="count"&&countByBox){
    const perBox=Math.max(0,parseInt(boxSizes[v],10)||0);
    if(!perBox){if(!(v in counts))counts[v]=0;scheduleRender();openAppTab("data");return;}
@@ -514,7 +518,7 @@ function onScan(code){
  const addQty=currentMode==="count"?getCountScanQuantity(code):1;
  if(!addQty)return;
  add(code,addQty);
- if(photoMode.checked){
+ if(photoMode.checked&&(currentMode==="order"||(currentMode==="count"&&countPurpose==="scanorder"))){
    photoPendingCode=code;
    cameraCard.classList.add("photo-capture-mode");
    photoControls.style.display="block";
@@ -1111,7 +1115,7 @@ function makeTaskPayload(){
  })):null;
  return {
    id:uuid(),
-   task_date:taskDate.value,employee_name:employeeName.value.trim(),customer_name:customerName.value.trim()||null,task_name:(type==="inbound"?"":taskName.value.trim()),task_content:JSON.stringify({type,box_mode:!!boxDetails,box_details:boxDetails,photo_mode:currentMode==="order"&&photoMode.checked}),batch_no:(type==="inbound"?inboundBatchNo:null),
+   task_date:taskDate.value,employee_name:employeeName.value.trim(),customer_name:customerName.value.trim()||null,task_name:(type==="inbound"?"":taskName.value.trim()),task_content:JSON.stringify({type,box_mode:!!boxDetails,box_details:boxDetails,photo_mode:(currentMode==="order"||(currentMode==="count"&&countPurpose==="scanorder"))&&photoMode.checked}),batch_no:(type==="inbound"?inboundBatchNo:null),
    total_qty:entries.reduce((s,x)=>s+x[1],0),sku_types:entries.length,device_id:deviceId(),
    items:entries.map(([sku,qty])=>({sku,qty})),
    order_photos:orderPhotos.slice()
