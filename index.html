@@ -124,7 +124,7 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
   <div class="card">
     <div class="grid">
       <div><label data-i18n="employee">员工姓名</label><input id="employeeName" data-ph="employeePh" placeholder="例如：Ah Hong"></div>
-      <div><label data-ui="customer">客户</label><input id="customerName" data-ui-ph="customerPh" placeholder="例如：ABC Trading"></div>
+      <div><label data-ui="customer">客户</label><input id="customerName" list="customerOptions" data-ui-ph="customerPh" placeholder="例如：ABC Trading"><datalist id="customerOptions"></datalist></div>
       <div><label data-i18n="date">日期</label><input id="taskDate" type="date" disabled></div>
       <div id="taskNameField"><label data-i18n="taskName">任务名称</label><input id="taskName" data-ph="taskNamePh" placeholder="例如：退货盘点"></div>
     </div>
@@ -215,6 +215,14 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
 const SUPABASE_URL="https://brqurxainlsteygsqfcu.supabase.co";
 const SUPABASE_KEY="sb_publishable_WGmlYFeJDFhyCSteTxQGWQ_3aggl9LK";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
+async function loadCustomerOptions(){
+ try{
+  const response=await fetch("https://cerulean-kringle-7ecd4c.netlify.app/api/customer-list");
+  if(!response.ok)throw new Error();
+  const names=await response.json(),list=document.getElementById("customerOptions");
+  if(list)list.innerHTML=(names||[]).map(name=>"<option value=\""+String(name).replace(/"/g,"&quot;")+"\">").join("");
+ }catch{}
+}
 const photoSb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
 let counts={}, history=[], lastDecoded="", lastAt=0, scanLockedUntil=0, scanCandidate="", scanCandidateAt=0;
 let countByBox=localStorage.getItem("warehouse_count_by_box")==="1";
@@ -1171,6 +1179,7 @@ async function newTask(){
  }
 }
 
+loadCustomerOptions();
 setActiveTab("mode");
 applyLang();
 applyMode();
