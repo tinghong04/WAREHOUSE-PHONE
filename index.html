@@ -387,7 +387,7 @@ function applyMode(){
  document.body.classList.toggle("mode-order",order);document.body.classList.toggle("mode-inbound",inbound);
  countModeBtn.classList.toggle("active",!order);orderModeBtn.classList.toggle("active",order);
  photoSetupCard.style.display=(order||scanOrder)?"flex":"none";
- $("shippingPairPanel").classList.toggle("hidden",!(order&&orderPurpose==="shipping"&&shippingBindingKnown&&!shippingPhoneBound));
+ $("shippingPairPanel").classList.add("hidden");
  customerField.style.display="block";
  customerName.style.display=order?"none":"block";
  customerNameSelect.style.display=order?"block":"none";
@@ -547,7 +547,7 @@ function onScan(code){
    if(pairMatch){claimShippingPair(pairMatch[1]);return}
    if(/^\d{6}$/.test(code)){claimShippingPair(code);return}
    if(!activeCustomerName())return showCameraNotice("请先选择客户");
-   if(!shippingExpected){fetch("https://cerulean-kringle-7ecd4c.netlify.app/api/shipping-lookup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId:deviceId(),customer:activeCustomerName(),orderNo:code})}).then(r=>r.json()).then(data=>{if(!data.ok){if(String(data.error||"").includes("尚未绑定")){shippingPhoneBound=false;shippingBindingKnown=true;localStorage.removeItem("warehouse_shipping_bound");applyMode()}warningBeep();showCameraNotice(data.error||"没有找到 TK 对照");return}shippingSource=code;shippingExpected=data.trackingNo;showCameraNotice("虾皮 "+code+"，请扫 TK："+data.trackingNo)}).catch(()=>{warningBeep();showCameraNotice("查询失败")});return
+   if(!shippingExpected){fetch("https://cerulean-kringle-7ecd4c.netlify.app/api/shipping-lookup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId:deviceId(),customer:activeCustomerName(),orderNo:code})}).then(r=>r.json()).then(data=>{if(!data.ok){if(String(data.error||"").includes("尚未绑定")){shippingPhoneBound=false;shippingBindingKnown=true;localStorage.removeItem("warehouse_shipping_bound");$("shippingPairPanel").classList.remove("hidden")}warningBeep();showCameraNotice(data.error||"没有找到 TK 对照");return}shippingSource=code;shippingExpected=data.trackingNo;showCameraNotice("虾皮 "+code+"，请扫 TK："+data.trackingNo)}).catch(()=>{warningBeep();showCameraNotice("查询失败")});return
    }
    if(code===shippingExpected){feedback();showCameraNotice("发货成功："+shippingSource+" → "+code);shippingExpected="";shippingSource="";return}
    warningBeep();showCameraNotice("TK 不匹配，请扫："+shippingExpected);return
