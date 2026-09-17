@@ -241,7 +241,7 @@ let screenWakeLock=null,wakeIdleTimer=null,recoverCameraTimer=null,cameraInterru
 let lang=localStorage.getItem("warehouse_lang")||"zh";
 let currentMode=localStorage.getItem("warehouse_task_mode")||"count";
 let countPurpose=localStorage.getItem("warehouse_count_purpose")||"inventory";
-let orderPurpose=localStorage.getItem("warehouse_order_purpose")||"arrival", shippingExpected="", shippingSource="";
+let orderPurpose=localStorage.getItem("warehouse_order_purpose")||"arrival", shippingExpected="", shippingSource="", pairingInFlight=false, shippingPhoneBound=localStorage.getItem("warehouse_shipping_bound")==="1";
 let inboundCountingStarted=localStorage.getItem("warehouse_inbound_counting")==="1";
 let inboundBatchNo=localStorage.getItem("warehouse_inbound_batch_no")||"";
 let inboundBatchPhotoTaken=localStorage.getItem("warehouse_inbound_batch_photo")==="1";
@@ -352,10 +352,13 @@ function setMode(mode){
 function setOrderPurpose(purpose){orderPurpose=purpose;shippingExpected="";shippingSource="";localStorage.setItem("warehouse_order_purpose",purpose);applyMode()}
 function claimShippingPair(code){
  const pair=String(code||"").trim();
+ if(shippingPhoneBound){showCameraNotice("这台手机已绑定，可以开始扫虾皮单号");return}
+ if(pairingInFlight)return;
  if(!/^\d{6}$/.test(pair)){warningBeep();showCameraNotice("请输入电脑版显示的 6 位绑定码");return}
+ pairingInFlight=true;scanLockedUntil=Date.now()+4000;showCameraNotice("正在绑定手机，请稍候…");
  fetch("https://cerulean-kringle-7ecd4c.netlify.app/api/shipping-claim",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:pair,deviceId:deviceId()})})
-  .then(r=>r.json()).then(data=>{if(!data.ok){warningBeep();showCameraNotice(data.error||"绑定失败");return}$("shippingPairInput").value="";feedback();showCameraNotice("手机绑定成功，现在可直接发货核对")})
-  .catch(()=>{warningBeep();showCameraNotice("绑定失败，请重试")});
+  .then(r=>r.json()).then(data=>{pairingInFlight=false;if(!data.ok){warningBeep();showCameraNotice(data.error||"绑定失败");return}shippingPhoneBound=true;localStorage.setItem("warehouse_shipping_bound","1");$("shippingPairInput").value="";$("shippingPairPanel").classList.add("hidden");feedback();showCameraNotice("绑定成功，可以开始扫虾皮单号")})
+  .catch(()=>{pairingInFlight=false;warningBeep();showCameraNotice("绑定失败，请重试")});
 }
 function bindPhoneFromPanel(){claimShippingPair($("shippingPairInput").value)}
 async function manualPairPhone(){
@@ -377,7 +380,7 @@ function applyMode(){
  document.body.classList.toggle("mode-order",order);document.body.classList.toggle("mode-inbound",inbound);
  countModeBtn.classList.toggle("active",!order);orderModeBtn.classList.toggle("active",order);
  photoSetupCard.style.display=(order||scanOrder)?"flex":"none";
- $("shippingPairPanel").classList.toggle("hidden",!(order&&orderPurpose==="shipping"));
+ $("shippingPairPanel").classList.toggle("hidden",!(order&&orderPurpose==="shipping"&&!shippingPhoneBound));
  customerField.style.display="block";
  customerName.style.display=order?"none":"block";
  customerNameSelect.style.display=order?"block":"none";
@@ -537,7 +540,7 @@ function onScan(code){
    if(pairMatch){claimShippingPair(pairMatch[1]);return}
    if(/^\d{6}$/.test(code)){claimShippingPair(code);return}
    if(!activeCustomerName())return showCameraNotice("请先选择客户");
-   if(!shippingExpected){fetch("https://cerulean-kringle-7ecd4c.netlify.app/api/shipping-lookup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId:deviceId(),customer:activeCustomerName(),orderNo:code})}).then(r=>r.json()).then(data=>{if(!data.ok){warningBeep();showCameraNotice(data.error||"没有找到 TK 对照");return}shippingSource=code;shippingExpected=data.trackingNo;showCameraNotice("虾皮 "+code+"，请扫 TK："+data.trackingNo)}).catch(()=>{warningBeep();showCameraNotice("查询失败")});return
+   if(!shippingExpected){fetch("https://cerulean-kringle-7ecd4c.netlify.app/api/shipping-lookup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId:deviceId(),customer:activeCustomerName(),orderNo:code})}).then(r=>r.json()).then(data=>{if(!data.ok){if(String(data.error||"").includes("尚未绑定")){shippingPhoneBound=false;localStorage.removeItem("warehouse_shipping_bound");applyMode()}warningBeep();showCameraNotice(data.error||"没有找到 TK 对照");return}shippingSource=code;shippingExpected=data.trackingNo;showCameraNotice("虾皮 "+code+"，请扫 TK："+data.trackingNo)}).catch(()=>{warningBeep();showCameraNotice("查询失败")});return
    }
    if(code===shippingExpected){feedback();showCameraNotice("发货成功："+shippingSource+" → "+code);shippingExpected="";shippingSource="";return}
    warningBeep();showCameraNotice("TK 不匹配，请扫："+shippingExpected);return
