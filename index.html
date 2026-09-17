@@ -366,7 +366,7 @@ function applyMode(){
  countPurposeCard.style.display=order?"none":"grid";orderPurposeCard.style.display=order?"grid":"none";
  orderArrivalBtn.classList.toggle("active",orderPurpose==="arrival");orderShippingBtn.classList.toggle("active",orderPurpose==="shipping");
  inventoryPurposeBtn.classList.toggle("active",countPurpose==="inventory");inboundPurposeBtn.classList.toggle("active",inbound);scanOrderPurposeBtn.classList.toggle("active",countPurpose==="scanorder");
- modeNote.textContent=order?u("modeOrder"):inbound?u("modeInbound"):scanOrder?"扫单号：每个单号只可记录一次，可选择是否拍照。":u("modeCount");
+ modeNote.textContent=order?(orderPurpose==="shipping"?"发货：先选择客户；首次使用先扫电脑版生成的绑定二维码，再扫虾皮单号与 TK 单号。":u("modeOrder")):inbound?u("modeInbound"):scanOrder?"扫单号：每个单号只可记录一次，可选择是否拍照。":u("modeCount");
  document.querySelector("[data-i18n='details']").textContent=order?u("detailsOrder"):u("detailsCount");
  document.querySelector("[data-i18n='manualLabel']").textContent=order?u("manualOrder"):u("manualCount");
  updateInboundUI();
@@ -514,6 +514,13 @@ function onScan(code){
  // Record immediately: warehouse scanning must not require the operator to hold each code still.
  scanCandidate="";scanCandidateAt=0;
  if(currentMode==="order"&&orderPurpose==="shipping"){
+   const pairMatch=code.match(/^warehouse-pair:(\\d{6})$/i);
+   if(pairMatch){
+     fetch("https://cerulean-kringle-7ecd4c.netlify.app/api/shipping-claim",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:pairMatch[1],deviceId:deviceId()})})
+       .then(r=>r.json()).then(data=>{if(!data.ok){warningBeep();showCameraNotice(data.error||"绑定失败");return}feedback();showCameraNotice("手机绑定成功，现在可直接发货核对")})
+       .catch(()=>{warningBeep();showCameraNotice("绑定失败，请重试")});
+     return;
+   }
    if(!activeCustomerName())return showCameraNotice("请先选择客户");
    if(!shippingExpected){fetch("https://cerulean-kringle-7ecd4c.netlify.app/api/shipping-lookup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId:deviceId(),customer:activeCustomerName(),orderNo:code})}).then(r=>r.json()).then(data=>{if(!data.ok){warningBeep();showCameraNotice(data.error||"没有找到 TK 对照");return}shippingSource=code;shippingExpected=data.trackingNo;showCameraNotice("虾皮 "+code+"，请扫 TK："+data.trackingNo)}).catch(()=>{warningBeep();showCameraNotice("查询失败")});return
    }
