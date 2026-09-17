@@ -124,7 +124,7 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
   <div class="card">
     <div class="grid">
       <div><label data-i18n="employee">员工姓名</label><input id="employeeName" data-ph="employeePh" placeholder="例如：Ah Hong"></div>
-      <div><label data-ui="customer">客户</label><select id="customerName"><option value="">请选择已创建客户</option></select></div>
+      <div id="customerField"><label data-ui="customer">客户</label><select id="customerName"><option value="">请选择已创建客户</option></select></div>
       <div><label data-i18n="date">日期</label><input id="taskDate" type="date" disabled></div>
       <div id="taskNameField"><label data-i18n="taskName">任务名称</label><input id="taskName" data-ph="taskNamePh" placeholder="例如：退货盘点"></div>
     </div>
@@ -357,6 +357,7 @@ function applyMode(){
  document.body.classList.toggle("mode-order",order);document.body.classList.toggle("mode-inbound",inbound);
  countModeBtn.classList.toggle("active",!order);orderModeBtn.classList.toggle("active",order);
  photoSetupCard.style.display=(order||scanOrder)?"flex":"none";
+ customerField.style.display=order?"block":"none";
  boxModeBtn.style.display=scanOrder?"none":"";
  countPurposeCard.style.display=order?"none":"grid";
  inventoryPurposeBtn.classList.toggle("active",countPurpose==="inventory");inboundPurposeBtn.classList.toggle("active",inbound);scanOrderPurposeBtn.classList.toggle("active",countPurpose==="scanorder");
