@@ -510,7 +510,10 @@ function onScan(code){
  if(code.length<2||photoPendingCode||exceptionPhotoArmed||countExceptionArmed||now<scanLockedUntil)return;
  // Record immediately: warehouse scanning must not require the operator to hold each code still.
  scanCandidate="";scanCandidateAt=0;
- if(currentMode==="count"&&countPurpose==="scanorder"&&counts[code]){alert("这个单号已经扫描过，未重复记录");return}
+ if(currentMode==="count"&&countPurpose==="scanorder"&&counts[code]){
+   if(code===lastDecoded&&now-lastAt<2500)return;
+   lastDecoded=code;lastAt=now;alert("这个单号已经扫描过，未重复记录");return
+ }
  if(currentMode==="count"&&countPurpose==="inbound"){
    if(!inboundBatchNo){inboundBatchNo=code;localStorage.setItem("warehouse_inbound_batch_no",code);lastDecoded=code;lastAt=now;lastCode.textContent="批次："+code;lastQty.textContent="请拍本批次货物";feedback();updateInboundUI();syncWorkflowStage();return}
    if(!inboundCountingStarted)return;
