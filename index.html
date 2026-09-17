@@ -360,12 +360,11 @@ async function refreshShippingBinding(){
 }
 function claimShippingPair(code){
  const pair=String(code||"").trim();
- if(shippingPhoneBound){showCameraNotice("这台手机已绑定，可以开始扫虾皮单号");return}
  if(pairingInFlight)return;
  if(!/^\d{6}$/.test(pair)){warningBeep();showCameraNotice("请输入电脑版显示的 6 位绑定码");return}
  pairingInFlight=true;scanLockedUntil=Date.now()+4000;showCameraNotice("正在绑定手机，请稍候…");
  fetch("https://cerulean-kringle-7ecd4c.netlify.app/api/shipping-claim",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:pair,deviceId:deviceId()})})
-  .then(r=>r.json()).then(data=>{pairingInFlight=false;if(!data.ok){warningBeep();showCameraNotice(data.error||"绑定失败");return}shippingPhoneBound=true;shippingBindingKnown=true;localStorage.setItem("warehouse_shipping_bound","1");$("shippingPairInput").value="";$("shippingPairPanel").classList.add("hidden");feedback();showCameraNotice("绑定成功，可以开始扫虾皮单号")})
+  .then(r=>r.json()).then(data=>{pairingInFlight=false;if(!data.ok){warningBeep();showCameraNotice(data.error||"绑定失败");return}shippingPhoneBound=true;shippingBindingKnown=true;localStorage.setItem("warehouse_shipping_bound","1");$("shippingPairInput").value="";$("shippingPairPanel").classList.add("hidden");feedback();showCameraNotice("绑定成功，可以开始扫虾皮单号");setTimeout(refreshShippingBinding,500)})
   .catch(()=>{pairingInFlight=false;warningBeep();showCameraNotice("绑定失败，请重试")});
 }
 function bindPhoneFromPanel(){claimShippingPair($("shippingPairInput").value)}
