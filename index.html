@@ -518,10 +518,11 @@ async function resetCurrentTask(){
  if(photoUploadCount)return alert(t("photoWaiting"));
  const hasDraft=Object.keys(counts).length||orderPhotos.length||inboundBatchNo;
  if(hasDraft&&!confirm("重置会清空当前未完成的扫码、照片和批次资料，是否继续？"))return;
- await stopCamera();
- discardDraftForModeChange();
- setSync(t("syncReady"),"syncok");
- setActiveTab("info");
+ Promise.resolve(stopCamera()).catch(()=>{}).finally(()=>{
+  discardDraftForModeChange();
+  setSync(t("syncReady"),"syncok");
+  setActiveTab("info");
+ });
 }
 
 // Prioritise the formats actually used in warehouse work. Fewer decoder passes give QR and linear barcodes clearer, faster recognition.
