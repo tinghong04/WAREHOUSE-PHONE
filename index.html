@@ -1035,24 +1035,28 @@ function render(){
    const d=document.createElement("div");d.className="row";
    const a=document.createElement("div");a.textContent=s;
    if(currentMode==="count"&&countByBox){
-     const perBox=Math.max(0,parseInt(boxSizes[s],10)||0);
-     a.style.whiteSpace="pre-line";
-     a.textContent=s+"\n每箱："+(perBox||"未填写")+"　箱数："+(perBox?(q/perBox):"—")+"　总数："+q;
-   }
-   const minus=document.createElement("button");minus.className="mini";minus.textContent="-1";minus.onclick=()=>changeQty(s,-1);
-   const qty=document.createElement("input");qty.className="qtyedit";qty.type="number";qty.inputMode="numeric";qty.min="0";qty.step="1";qty.value=q;
-   qty.setAttribute("aria-label",t("qtyCol"));
-   qty.addEventListener("change",()=>setQty(s,qty.value));
-   qty.addEventListener("blur",()=>setQty(s,qty.value));
-   qty.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();qty.blur()}});
-   if(currentMode==="order"){
-     const copy=document.createElement("button");copy.className="mini";copy.textContent="复制单号";copy.onclick=()=>copyText(s,"已复制物流单号");
-     d.append(a,copy);
+     const perBox=Math.max(0,parseInt(boxSizes[s],10)||0),boxes=perBox?Math.round(q/perBox):"";
+     const boxCount=document.createElement("input");boxCount.className="boxcountedit";boxCount.type="number";boxCount.inputMode="numeric";boxCount.min="0";boxCount.step="1";boxCount.placeholder="总箱数";boxCount.title="总箱数";boxCount.value=boxes;
+     const per=document.createElement("input");per.className="boxedit";per.type="number";per.inputMode="numeric";per.min="1";per.step="1";per.placeholder=u("perBox");per.title=u("perBox");per.value=perBox||"";
+     const sync=()=>setBoxValues(s,boxCount.value,per.value);
+     boxCount.addEventListener("change",sync);boxCount.addEventListener("blur",sync);per.addEventListener("change",sync);per.addEventListener("blur",sync);
+     const total=document.createElement("b");total.className="box-total";total.textContent="总："+q;
+     d.append(a,boxCount,per,total);
    }else{
-     const box=document.createElement("input");box.className="boxedit";box.type="number";box.inputMode="numeric";box.min="1";box.step="1";box.placeholder=u("perBox");box.title=u("perBox");box.value=boxSizes[s]||"";
-     box.addEventListener("change",()=>setBoxSize(s,box.value));
-     box.addEventListener("blur",()=>setBoxSize(s,box.value));
-     d.append(a,box,qty);
+     const qty=document.createElement("input");qty.className="qtyedit";qty.type="number";qty.inputMode="numeric";qty.min="0";qty.step="1";qty.value=q;
+     qty.setAttribute("aria-label",t("qtyCol"));
+     qty.addEventListener("change",()=>setQty(s,qty.value));
+     qty.addEventListener("blur",()=>setQty(s,qty.value));
+     qty.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();qty.blur()}});
+     if(currentMode==="order"){
+       const copy=document.createElement("button");copy.className="mini";copy.textContent="复制单号";copy.onclick=()=>copyText(s,"已复制物流单号");
+       d.append(a,copy);
+     }else{
+       const box=document.createElement("input");box.className="boxedit";box.type="number";box.inputMode="numeric";box.min="1";box.step="1";box.placeholder=u("perBox");box.title=u("perBox");box.value=boxSizes[s]||"";
+       box.addEventListener("change",()=>setBoxSize(s,box.value));
+       box.addEventListener("blur",()=>setBoxSize(s,box.value));
+       d.append(a,box,qty);
+     }
    }
    skuList.appendChild(d);
  });
@@ -1086,6 +1090,12 @@ function setBoxSize(sku,value){
  if(next)boxSizes[sku]=next;else delete boxSizes[sku];
  localStorage.setItem("warehouse_current_box_sizes",JSON.stringify(boxSizes));
  scheduleRender();
+}
+function setBoxValues(sku,boxesValue,perBoxValue){
+ const boxes=Math.max(0,parseInt(boxesValue,10)||0),perBox=Math.max(0,parseInt(perBoxValue,10)||0);
+ if(perBox)boxSizes[sku]=perBox;else delete boxSizes[sku];
+ localStorage.setItem("warehouse_current_box_sizes",JSON.stringify(boxSizes));
+ setQty(sku,boxes*perBox);
 }
 function getCountScanQuantity(sku){
  if(!countByBox)return scanIncrement;
