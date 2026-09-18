@@ -704,7 +704,7 @@ async function startCamera(){
    await launch(
      {facingMode:"environment"},
      {
-       fps:12,
+       fps:20,
        disableFlip:false,
        videoConstraints:{
          facingMode:{ideal:"environment"},
@@ -736,6 +736,8 @@ async function startCamera(){
  keepScreenAwake();
  camStatus.textContent=t("camReady");
  setTimeout(enhanceCamera,300);
+ // Run the platform barcode detector alongside the compatibility scanner for long 1D logistics labels.
+ setTimeout(startNativeDetector,500);
 }
 async function keepScreenAwake(){
  if(!cameraRunning||document.visibilityState!=="visible"||!navigator.wakeLock)return;
