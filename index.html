@@ -230,7 +230,9 @@ async function loadCustomerOptions(){
   const response=await fetch("https://cerulean-kringle-7ecd4c.netlify.app/.netlify/functions/customer-list");
   if(!response.ok)throw new Error();
   const names=await response.json(),list=document.getElementById("customerNameSelect"),saved=localStorage.getItem("warehouse_customer_name")||"";
-  if(list){list.innerHTML='<option value="">请选择已创建客户</option>'+(names||[]).map(name=>'<option value="'+String(name).replace(/"/g,"&quot;")+'">'+String(name)+'</option>').join("");if(saved&&[...list.options].some(option=>option.value===saved))list.value=saved;}
+  // Preserve an in-progress selection while the customer list refreshes.
+  const selected=(list&&list.value)||saved;
+  if(list){list.innerHTML='<option value="">请选择已创建客户</option>'+(names||[]).map(name=>'<option value="'+String(name).replace(/"/g,"&quot;")+'">'+String(name)+'</option>').join("");if(selected&&[...list.options].some(option=>option.value===selected))list.value=selected;}
  }catch{}
 }
 const photoSb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
@@ -411,14 +413,18 @@ function applyMode(){
  const manualLabel=document.querySelector("[data-i18n='manualLabel']");
  if(detailsLabel)detailsLabel.textContent=order?u("detailsOrder"):u("detailsCount");
  if(manualLabel)manualLabel.textContent=order?u("manualOrder"):u("manualCount");
- updateInboundUI();renderShippingTarget();updateShippingScanLog(shippingExpected?("请扫描虾皮单号："+shippingExpected):"等待扫描 TK 物流单号");
+ updateInboundUI();renderShippingTarget();updateShippingScanLog(shippingExpected?("请扫描虾皮单号："+shippingExpected):(activeCustomerName()?("当前客户："+activeCustomerName()+"；等待扫描 TK 物流单号"):"请先在资料页选择客户"));
 }
 
 function todayLocal(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
 taskDate.value=todayLocal();
 const savedName=localStorage.getItem("warehouse_employee_name");if(savedName)employeeName.value=savedName;
 const savedCustomer=localStorage.getItem("warehouse_customer_name");if(savedCustomer){customerName.value=savedCustomer;customerNameSelect.value=savedCustomer}
-function activeCustomerName(){return (currentMode==="order"?customerNameSelect.value:customerName.value).trim()}
+function activeCustomerName(){
+ const preferred=currentMode==="order"?customerNameSelect.value:customerName.value;
+ // The saved value protects shipping when the list refreshes after a customer was chosen.
+ return String(preferred||localStorage.getItem("warehouse_customer_name")||customerName.value||"").trim();
+}
 employeeName.addEventListener("change",()=>localStorage.setItem("warehouse_employee_name",employeeName.value.trim()));
 customerName.addEventListener("change",()=>localStorage.setItem("warehouse_customer_name",customerName.value.trim()));
 customerNameSelect.addEventListener("change",()=>localStorage.setItem("warehouse_customer_name",customerNameSelect.value.trim()));
