@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>仓库 SKU 扫码计数器 · 摄像头版</title>
 <script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -238,6 +239,7 @@ localStorage.setItem("warehouse_current_task_id",currentTaskId);
 try{orderPhotos=JSON.parse(localStorage.getItem("warehouse_current_task_photos")||"[]")}catch(e){orderPhotos=[]}
 let audioCtx=null, html5QrCode=null, cameraRunning=false, currentTrack=null;
 let nativeDetector=null,nativeDetectorRunning=false,nativeDetectorTimer=null;
+let jsQrRunning=false,jsQrTimer=null,jsQrCanvas=null,jsQrContext=null;
 let screenWakeLock=null,wakeIdleTimer=null,recoverCameraTimer=null,cameraInterrupted=false;
 let lang=localStorage.getItem("warehouse_lang")||"zh";
 let currentMode=localStorage.getItem("warehouse_task_mode")||"count";
@@ -619,6 +621,35 @@ async function startNativeDetector(){
  };
  detect();
 }
+function startJsQrDetector(){
+ stopJsQrDetector();
+ if(typeof window.jsQR!=="function")return;
+ jsQrRunning=true;
+ jsQrCanvas=document.createElement("canvas");
+ jsQrContext=jsQrCanvas.getContext("2d",{willReadFrequently:true});
+ const detect=()=>{
+   if(!jsQrRunning||!cameraRunning||!jsQrContext)return;
+   const video=document.querySelector("#reader video");
+   try{
+     if(video&&video.readyState>=2&&video.videoWidth&&video.videoHeight){
+       // Keep the image detailed enough for screen QR codes while avoiding iPhone frame-rate drops.
+       const scale=Math.min(1,900/Math.max(video.videoWidth,video.videoHeight));
+       const width=Math.max(2,Math.floor(video.videoWidth*scale));
+       const height=Math.max(2,Math.floor(video.videoHeight*scale));
+       jsQrCanvas.width=width;jsQrCanvas.height=height;
+       jsQrContext.drawImage(video,0,0,width,height);
+       const image=jsQrContext.getImageData(0,0,width,height);
+       const result=window.jsQR(image.data,width,height,{inversionAttempts:"attemptBoth"});
+       if(result&&result.data)onScan(result.data);
+     }
+   }catch(e){}
+   jsQrTimer=setTimeout(detect,180);
+ };
+ detect();
+}
+function stopJsQrDetector(){
+ jsQrRunning=false;clearTimeout(jsQrTimer);jsQrTimer=null;jsQrCanvas=null;jsQrContext=null;
+}
 function stopNativeDetector(){
  nativeDetectorRunning=false;nativeDetector=null;
  clearTimeout(nativeDetectorTimer);nativeDetectorTimer=null;
@@ -642,7 +673,7 @@ async function enhanceCamera(){
 }
 
 async function stopCamera(){
- stopNativeDetector();
+ stopNativeDetector();stopJsQrDetector();
  try{if(html5QrCode&&cameraRunning)await html5QrCode.stop()}catch(e){}
  cameraRunning=false;
  releaseScreenWakeLock();
@@ -757,6 +788,8 @@ async function startCamera(){
  setTimeout(enhanceCamera,300);
  // Run the platform barcode detector alongside the compatibility scanner for long 1D logistics labels.
  setTimeout(startNativeDetector,500);
+ // Dedicated QR decoder: handles high-contrast QR labels shown on a computer screen on iPhone.
+ setTimeout(startJsQrDetector,650);
 }
 async function keepScreenAwake(){
  if(!cameraRunning||document.visibilityState!=="visible"||!navigator.wakeLock)return;
