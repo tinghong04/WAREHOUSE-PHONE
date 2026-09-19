@@ -565,6 +565,12 @@ function onScan(code){
  if(currentMode==="order"&&orderPurpose==="shipping"){
    // Keep a permanent trace so the operator can see whether the camera read anything at all.
    updateShippingScanLog("已读取："+code+"；正在处理…");
+   const selectedCustomer=activeCustomerName();
+   if(!selectedCustomer){
+     updateShippingScanLog("已读取："+code+"；但当前客户为空");
+     showCameraNotice("请先回到资料页选择客户",true);
+     return;
+   }
    const pairMatch=code.match(/^warehouse-pair:(\d{6})$/i);
    if(pairMatch){claimShippingPair(pairMatch[1]);return}
    if(/^\d{6}$/.test(code)){claimShippingPair(code);return}
