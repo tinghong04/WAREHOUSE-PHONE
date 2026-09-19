@@ -533,7 +533,16 @@ const formats=[
  Html5QrcodeSupportedFormats.UPC_E
 ];
 function activeScanFormats(){
- // Always accept both QR and common barcode formats, including the inbound batch step.
+ // 发货面单优先 QR 和最常见的物流一维码；iPhone 同时解太多格式时反而容易漏扫。
+ if(currentMode==="order"&&orderPurpose==="shipping"){
+   return [
+     Html5QrcodeSupportedFormats.QR_CODE,
+     Html5QrcodeSupportedFormats.CODE_128,
+     Html5QrcodeSupportedFormats.CODE_39,
+     Html5QrcodeSupportedFormats.CODE_93,
+     Html5QrcodeSupportedFormats.ITF
+   ];
+ }
  return formats;
 }
 
@@ -713,7 +722,8 @@ async function startCamera(){
    await launch(
      {facingMode:"environment"},
      {
-       fps:20,
+       // 12fps gives mobile cameras enough time to focus on a label or a screen QR code.
+       fps:12,
        disableFlip:false,
        videoConstraints:{
          facingMode:{ideal:"environment"},
