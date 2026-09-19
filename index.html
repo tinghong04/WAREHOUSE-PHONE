@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>仓库 SKU 扫码计数器 · 摄像头版</title>
-<script src="https://unpkg.com/html5-qrcode"></script>
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://unpkg.com/jsqr@1.4.0/dist/jsQR.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -768,7 +768,11 @@ async function decodePhotoFile(file){
  }
 }
 async function startCamera(){
- restartBtn.style.display="none";camStatus.textContent=t("camStarting");
+ restartBtn.style.display="none";
+ if(typeof Html5Qrcode==="undefined"){
+   camStatus.textContent="扫码组件未加载，请重新打开此页面";restartBtn.style.display="inline-block";return;
+ }
+ camStatus.textContent=t("camStarting");
  const onDecoded=onScan, onDecodeError=()=>{};
  async function releaseFailedScanner(){
    try{if(html5QrCode&&cameraRunning)await html5QrCode.stop()}catch(e){}
