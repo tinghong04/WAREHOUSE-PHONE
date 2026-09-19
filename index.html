@@ -174,6 +174,9 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
     </div>
   </div>
 
+  <div id="shippingScanLog" class="card" style="margin:0 8px 12px;border-color:#3b5466;background:#0d1b25">
+    <div class="muted">发货扫码状态</div><b id="shippingScanLogText" style="display:block;font-size:14px;word-break:break-all;margin-top:5px">等待扫描 TK 物流单号</b>
+  </div>
   <div id="shippingTarget" class="card hidden" style="margin:0 8px 12px;border-color:#38d878;background:#10291b">
     <div class="muted">已扫 TK 物流单号</div><b id="shippingSourceText" style="display:block;font-size:15px;word-break:break-all;margin:4px 0 10px"></b>
     <div class="muted">请扫描对应的虾皮单号</div><b id="shippingExpectedText" style="display:block;font-size:26px;letter-spacing:1px;color:#8cffad;word-break:break-all;margin-top:5px"></b>
@@ -319,7 +322,7 @@ const employeeName=$("employeeName"),customerName=$("customerName"),taskDate=$("
 const manualInput=$("manualInput"),lastCode=$("lastCode"),lastQty=$("lastQty"),totalCount=$("totalCount"),uniqueCount=$("uniqueCount");
 const skuList=$("skuList"),searchInput=$("searchInput"),flash=$("flash"),langBtn=$("langBtn"),camStatus=$("camStatus"),restartBtn=$("restartBtn"),cameraCard=document.querySelector(".camera-card");
 const photoMode=$("photoMode"),photoSetupCard=$("photoSetupCard"),photoStatus=$("photoStatus"),capturePhotoBtn=$("capturePhotoBtn"),photoControls=$("photoControls"),photoPreview=$("photoPreview"),photoPreviewImg=$("photoPreviewImg"),photoPreviewLabel=$("photoPreviewLabel"),countModeBtn=$("countModeBtn"),orderModeBtn=$("orderModeBtn"),modeNote=$("modeNote");
-const syncTitle=$("syncTitle"),syncStatus=$("syncStatus"),retryBtn=$("retryBtn"),finishBtn=$("finishBtn");
+const syncTitle=$("syncTitle"),syncStatus=$("syncStatus"),retryBtn=$("retryBtn"),finishBtn=$("finishBtn"),shippingScanLog=$("shippingScanLog"),shippingScanLogText=$("shippingScanLogText");
 const customerField=$("customerField"),customerNameSelect=$("customerNameSelect"),boxModeBtn=$("boxModeBtn");
 const countPurposeCard=$("countPurposeCard"),orderPurposeCard=$("orderPurposeCard");
 const orderArrivalBtn=$("orderArrivalBtn"),orderShippingBtn=$("orderShippingBtn");
@@ -408,7 +411,7 @@ function applyMode(){
  const manualLabel=document.querySelector("[data-i18n='manualLabel']");
  if(detailsLabel)detailsLabel.textContent=order?u("detailsOrder"):u("detailsCount");
  if(manualLabel)manualLabel.textContent=order?u("manualOrder"):u("manualCount");
- updateInboundUI();renderShippingTarget();
+ updateInboundUI();renderShippingTarget();updateShippingScanLog(shippingExpected?("请扫描虾皮单号："+shippingExpected):"等待扫描 TK 物流单号");
 }
 
 function todayLocal(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
@@ -554,23 +557,25 @@ function onScan(code){
  // Record immediately: warehouse scanning must not require the operator to hold each code still.
  scanCandidate="";scanCandidateAt=0;
  if(currentMode==="order"&&orderPurpose==="shipping"){
+   // Keep a permanent trace so the operator can see whether the camera read anything at all.
+   updateShippingScanLog("已读取："+code+"；正在处理…");
    const pairMatch=code.match(/^warehouse-pair:(\d{6})$/i);
    if(pairMatch){claimShippingPair(pairMatch[1]);return}
    if(/^\d{6}$/.test(code)){claimShippingPair(code);return}
-   if(!activeCustomerName())return showCameraNotice("请先选择客户");
+   if(!activeCustomerName())return updateShippingScanLog("已读取："+code+"；但尚未选择客户");showCameraNotice("请先选择客户",true);
    if(!shippingExpected){
      if(shippingLookupPending||(code===lastDecoded&&now-lastAt<2800))return;
-     shippingLookupPending=true;lastDecoded=code;lastAt=now;scanLockedUntil=now+1800;showCameraNotice("正在查询对应的虾皮单号…");
+     shippingLookupPending=true;lastDecoded=code;lastAt=now;scanLockedUntil=now+1800;updateShippingScanLog("已读取 TK："+code+"；正在查询对应的虾皮单号…");showCameraNotice("正在查询对应的虾皮单号…",true);
      fetch("https://cerulean-kringle-7ecd4c.netlify.app/api/shipping-lookup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId:deviceId(),customer:activeCustomerName(),trackingNo:code})}).then(r=>r.json()).then(data=>{
-       if(!data.ok){if(String(data.error||"").includes("尚未绑定")){shippingPhoneBound=false;shippingBindingKnown=true;localStorage.removeItem("warehouse_shipping_bound")}warningBeep();showCameraNotice(data.error||"没有找到对应虾皮单号");return}
-       shippingSource=code;shippingExpected=data.orderNo;lastDecoded="";renderShippingTarget();showCameraNotice("请扫描对应的虾皮单号")
-     }).catch(()=>{warningBeep();showCameraNotice("查询失败")}).finally(()=>{shippingLookupPending=false;scanLockedUntil=Date.now()+550});return
+       if(!data.ok){if(String(data.error||"").includes("尚未绑定")){shippingPhoneBound=false;shippingBindingKnown=true;localStorage.removeItem("warehouse_shipping_bound")}warningBeep();updateShippingScanLog("已读取："+code+"；"+(data.error||"没有找到对应虾皮单号"));showCameraNotice(data.error||"没有找到对应虾皮单号",true);return}
+       shippingSource=code;shippingExpected=data.orderNo;lastDecoded="";renderShippingTarget();updateShippingScanLog("TK："+code+"；请扫描对应虾皮单号："+data.orderNo);showCameraNotice("请扫描对应的虾皮单号",true)
+     }).catch(()=>{warningBeep();updateShippingScanLog("已读取："+code+"；查询失败");showCameraNotice("查询失败",true)}).finally(()=>{shippingLookupPending=false;scanLockedUntil=Date.now()+550});return
    }
    if(code===shippingExpected){
-     scanLockedUntil=now+1200;lastDecoded=code;lastAt=now;feedback();showCameraNotice("发货核对成功："+shippingSource+" → "+code);shippingExpected="";shippingSource="";renderShippingTarget();return
+     scanLockedUntil=now+1200;lastDecoded=code;lastAt=now;feedback();updateShippingScanLog("核对成功："+shippingSource+" → "+code);showCameraNotice("发货核对成功："+shippingSource+" → "+code,true);shippingExpected="";shippingSource="";renderShippingTarget();return
    }
    if(code===lastDecoded&&now-lastAt<2800)return;
-   lastDecoded=code;lastAt=now;scanLockedUntil=now+2200;warningBeep();showCameraNotice("虾皮单号不匹配，请扫："+shippingExpected);return
+   lastDecoded=code;lastAt=now;scanLockedUntil=now+2200;warningBeep();updateShippingScanLog("已读取："+code+"；不匹配，应扫："+shippingExpected);showCameraNotice("虾皮单号不匹配，请扫："+shippingExpected,true);return
  }
  if(currentMode==="count"&&countPurpose==="scanorder"&&counts[code]){
    if(code===lastDecoded&&now-lastAt<2500)return;
@@ -684,11 +689,15 @@ function setActiveTab(tab){
  document.querySelectorAll(".bottom-tabs [data-tab]").forEach(button=>button.classList.toggle("active",button.dataset.tab===tab));
 }
 let cameraNoticeTimer=null;
-function showCameraNotice(text){
+function showCameraNotice(text,persist=false){
  if(!camStatus)return;
  camStatus.textContent=text;camStatus.classList.add("syncwarn");
  clearTimeout(cameraNoticeTimer);
- cameraNoticeTimer=setTimeout(()=>{camStatus.classList.remove("syncwarn");if(cameraRunning)camStatus.textContent=t("camReady")},1800);
+ if(!persist)cameraNoticeTimer=setTimeout(()=>{camStatus.classList.remove("syncwarn");if(cameraRunning)camStatus.textContent=t("camReady")},1800);
+}
+function updateShippingScanLog(text){
+ if(shippingScanLogText)shippingScanLogText.textContent=text;
+ if(shippingScanLog)shippingScanLog.classList.toggle("hidden",!(currentMode==="order"&&orderPurpose==="shipping"));
 }
 async function openAppTab(tab){
  if(tab==="mode"){
