@@ -169,7 +169,8 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
     </div>
     <div class="camera-status">
       <span id="camStatus">正在启动摄像头…</span>
-      <div class="camera-status-actions"><button id="restartBtn" class="dark" onclick="restartCamera()" data-ui="restart">重新启动摄像头</button><button id="manualModeBtn" class="manual-mode-btn" type="button" onclick="toggleManualMode()" data-ui="manualToggle">⌨ 手动录入</button></div>
+      <div class="camera-status-actions"><button id="restartBtn" class="dark" onclick="restartCamera()" data-ui="restart">重新启动摄像头</button><button id="photoScanBtn" class="manual-mode-btn" type="button" onclick="openPhotoScan()">📷 拍照识别</button><button id="manualModeBtn" class="manual-mode-btn" type="button" onclick="toggleManualMode()" data-ui="manualToggle">⌨ 手动录入</button></div>
+      <input id="photoScanInput" type="file" accept="image/*" capture="environment" class="hidden"><div id="fileReader" class="hidden"></div>
     </div>
   </div>
 
@@ -388,6 +389,7 @@ function renderShippingTarget(){
  panel.classList.toggle("hidden",!visible);
  if(visible){$("shippingSourceText").textContent=shippingSource;$("shippingExpectedText").textContent=shippingExpected}
 }
+$("photoScanInput").addEventListener("change",event=>decodePhotoFile(event.target.files&&event.target.files[0]));
 function applyMode(){
  const order=currentMode==="order", scanOrder=currentMode==="count"&&countPurpose==="scanorder", inbound=currentMode==="count"&&countPurpose==="inbound";
  document.body.classList.toggle("mode-order",order);document.body.classList.toggle("mode-inbound",inbound);
@@ -740,6 +742,30 @@ async function goReview(){
 }
 async function continueScanning(){
  reviewArea.classList.add("hidden");scanPage.classList.remove("reviewing");setActiveTab("camera");syncWorkflowStage();window.scrollTo(0,0);await startCamera();
+}
+function openPhotoScan(){
+ const input=$("photoScanInput");
+ if(!input)return;
+ input.value="";
+ input.click();
+}
+async function decodePhotoFile(file){
+ if(!file)return;
+ if(typeof Html5Qrcode==="undefined"){
+   warningBeep();showCameraNotice("扫码组件尚未加载，请重新打开页面后再试");return;
+ }
+ showCameraNotice("正在识别照片中的二维码 / 一维码…");
+ let reader=null;
+ try{
+   reader=new Html5Qrcode("fileReader",{formatsToSupport:activeScanFormats(),verbose:false});
+   const code=await reader.scanFile(file,true);
+   if(code){feedback();showCameraNotice("识别成功，正在核对单号…");onScan(code);return}
+   throw new Error("empty");
+ }catch(error){
+   warningBeep();showCameraNotice("未识别到条码，请让面单占满画面后重拍");
+ }finally{
+   try{if(reader)await reader.clear()}catch(e){}
+ }
 }
 async function startCamera(){
  restartBtn.style.display="none";camStatus.textContent=t("camStarting");
