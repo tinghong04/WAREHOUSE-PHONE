@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>仓库 SKU 扫码计数器 · 摄像头版</title>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<script src="https://unpkg.com/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="jsqr.js?v=1"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -543,16 +543,7 @@ const formats=[
  Html5QrcodeSupportedFormats.UPC_E
 ];
 function activeScanFormats(){
- // 发货面单优先 QR 和最常见的物流一维码；iPhone 同时解太多格式时反而容易漏扫。
- if(currentMode==="order"&&orderPurpose==="shipping"){
-   return [
-     Html5QrcodeSupportedFormats.QR_CODE,
-     Html5QrcodeSupportedFormats.CODE_128,
-     Html5QrcodeSupportedFormats.CODE_39,
-     Html5QrcodeSupportedFormats.CODE_93,
-     Html5QrcodeSupportedFormats.ITF
-   ];
- }
+ // 发货与其它已验证可扫的模式使用完全相同的格式集合，避免专用限制漏掉面单。
  return formats;
 }
 
