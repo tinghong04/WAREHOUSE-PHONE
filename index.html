@@ -117,7 +117,7 @@ button:active{transform:scale(.97);filter:brightness(.94);box-shadow:0 2px 7px r
     <h1 data-ui="appName">仓库助手</h1>
     <div class="muted" data-ui="chooseMode">选择本次工作方式</div>
   </div>
-  <div class="card mode-card"><div class="mode-switch"><button id="countModeBtn" class="mode-btn" onclick="setMode('count')">📦<br><span data-ui="countMode">点货模式</span></button><button id="orderModeBtn" class="mode-btn" onclick="setMode('order')">📷<br><span data-ui="orderMode">扫单模式</span></button></div><div id="countPurposeCard" class="purpose-switch"><button id="inventoryPurposeBtn" class="purpose-btn" onclick="setCountPurpose('inventory')" data-ui="inventory">库存盘点</button><button id="inboundPurposeBtn" class="purpose-btn" onclick="setCountPurpose('inbound')" data-ui="inboundChoice">货物入库</button></div><div id="orderPurposeCard" class="purpose-switch" style="display:none"><button id="orderArrivalBtn" class="purpose-btn" onclick="setOrderPurpose('arrival')">到货</button><button id="orderShippingBtn" class="purpose-btn" onclick="setOrderPurpose('shipping')">发货</button><button id="orderScanOrderBtn" class="purpose-btn" onclick="startScanOrderMode()">扫单号</button></div><div id="modeNote" class="muted mode-note"></div></div>
+  <div class="card mode-card"><div class="mode-switch"><button id="countModeBtn" class="mode-btn" onclick="setMode('count')">📦<br><span data-ui="countMode">点货模式</span></button><button id="orderModeBtn" class="mode-btn" onclick="setMode('order')">📷<br><span data-ui="orderMode">扫单模式</span></button></div><div id="countPurposeCard" class="purpose-switch"><button id="inventoryPurposeBtn" class="purpose-btn" onclick="setCountPurpose('inventory')" data-ui="inventory">库存盘点</button><button id="inboundPurposeBtn" class="purpose-btn" onclick="setCountPurpose('inbound')" data-ui="inboundChoice">货物入库</button><button id="scanOrderPurposeBtn" class="purpose-btn" onclick="setCountPurpose('scanorder')">扫单号</button></div><div id="orderPurposeCard" class="purpose-switch" style="display:none"><button id="orderArrivalBtn" class="purpose-btn" onclick="setOrderPurpose('arrival')">到货</button><button id="orderShippingBtn" class="purpose-btn" onclick="setOrderPurpose('shipping')">发货</button><button id="orderScanOrderBtn" class="purpose-btn" onclick="startScanOrderMode()">扫单号</button></div><div id="modeNote" class="muted mode-note"></div></div>
 </div>
 
 <div id="infoPage" class="hidden app-page">
@@ -248,7 +248,7 @@ let nativeDetector=null,nativeDetectorRunning=false,nativeDetectorTimer=null;
 let jsQrRunning=false,jsQrTimer=null,jsQrCanvas=null,jsQrContext=null;
 let screenWakeLock=null,wakeIdleTimer=null,recoverCameraTimer=null,cameraInterrupted=false;
 let lang=localStorage.getItem("warehouse_lang")||"zh";
-let currentMode=localStorage.getItem("warehouse_task_mode")||"count";
+let currentMode=localStorage.getItem("warehouse_task_mode")||"count";if(currentMode==="order"){currentMode="count";localStorage.setItem("warehouse_task_mode","count")}
 let countPurpose=localStorage.getItem("warehouse_count_purpose")||"inventory";
 let orderPurpose=localStorage.getItem("warehouse_order_purpose")||"arrival", shippingExpected="", shippingSource="", shippingTaskId="", shippingCustomer="", pairingInFlight=false, shippingPhoneBound=localStorage.getItem("warehouse_shipping_bound")==="1", shippingBindingKnown=false;
 let inboundCountingStarted=localStorage.getItem("warehouse_inbound_counting")==="1";
