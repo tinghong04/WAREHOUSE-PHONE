@@ -402,8 +402,10 @@ function applyMode(){
  orderArrivalBtn.classList.toggle("active",orderPurpose==="arrival");orderShippingBtn.classList.toggle("active",orderPurpose==="shipping");
  inventoryPurposeBtn.classList.toggle("active",countPurpose==="inventory");inboundPurposeBtn.classList.toggle("active",inbound);scanOrderPurposeBtn.classList.toggle("active",countPurpose==="scanorder");
  modeNote.textContent=order?(orderPurpose==="shipping"?"发货：先选择客户；首次使用先扫电脑版生成的绑定二维码。发货时先扫 TK 物流单号，画面会显示应扫的虾皮单号。":u("modeOrder")):inbound?u("modeInbound"):scanOrder?"扫单号：每个单号只可记录一次，可选择是否拍照。":u("modeCount");
- document.querySelector("[data-i18n='details']").textContent=order?u("detailsOrder"):u("detailsCount");
- document.querySelector("[data-i18n='manualLabel']").textContent=order?u("manualOrder"):u("manualCount");
+ const detailsLabel=document.querySelector("[data-i18n='details']");
+ const manualLabel=document.querySelector("[data-i18n='manualLabel']");
+ if(detailsLabel)detailsLabel.textContent=order?u("detailsOrder"):u("detailsCount");
+ if(manualLabel)manualLabel.textContent=order?u("manualOrder"):u("manualCount");
  updateInboundUI();renderShippingTarget();
 }
 
