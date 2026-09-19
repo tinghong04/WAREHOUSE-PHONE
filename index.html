@@ -566,10 +566,12 @@ function onScan(code){
    if(!shippingExpected){
      if(shippingLookupPending||(code===lastDecoded&&now-lastAt<2800))return;
      shippingLookupPending=true;lastDecoded=code;lastAt=now;scanLockedUntil=now+1800;updateShippingScanLog("已读取 TK："+code+"；正在查询对应的虾皮单号…");showCameraNotice("正在查询对应的虾皮单号…",true);
-     fetch("https://cerulean-kringle-7ecd4c.netlify.app/api/shipping-lookup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({deviceId:deviceId(),customer:activeCustomerName(),trackingNo:code})}).then(r=>r.json()).then(data=>{
+     const lookupAbort=new AbortController();
+     const lookupTimer=setTimeout(()=>lookupAbort.abort(),9000);
+     fetch("https://cerulean-kringle-7ecd4c.netlify.app/api/shipping-lookup",{method:"POST",headers:{"Content-Type":"application/json"},signal:lookupAbort.signal,body:JSON.stringify({deviceId:deviceId(),customer:activeCustomerName(),trackingNo:code})}).then(r=>r.json()).then(data=>{
        if(!data.ok){if(String(data.error||"").includes("尚未绑定")){shippingPhoneBound=false;shippingBindingKnown=true;localStorage.removeItem("warehouse_shipping_bound")}warningBeep();updateShippingScanLog("已读取："+code+"；"+(data.error||"没有找到对应虾皮单号"));showCameraNotice(data.error||"没有找到对应虾皮单号",true);return}
        shippingSource=code;shippingExpected=data.orderNo;lastDecoded="";renderShippingTarget();updateShippingScanLog("TK："+code+"；请扫描对应虾皮单号："+data.orderNo);showCameraNotice("请扫描对应的虾皮单号",true)
-     }).catch(()=>{warningBeep();updateShippingScanLog("已读取："+code+"；查询失败");showCameraNotice("查询失败",true)}).finally(()=>{shippingLookupPending=false;scanLockedUntil=Date.now()+550});return
+     }).catch(error=>{warningBeep();const message=error&&error.name==="AbortError"?"查询超时，请重扫或检查网络":"查询失败";updateShippingScanLog("已读取："+code+"；"+message);showCameraNotice(message,true)}).finally(()=>{clearTimeout(lookupTimer);shippingLookupPending=false;scanLockedUntil=Date.now()+550});return
    }
    if(code===shippingExpected){
      scanLockedUntil=now+1200;lastDecoded=code;lastAt=now;feedback();updateShippingScanLog("核对成功："+shippingSource+" → "+code);showCameraNotice("发货核对成功："+shippingSource+" → "+code,true);shippingExpected="";shippingSource="";renderShippingTarget();return
